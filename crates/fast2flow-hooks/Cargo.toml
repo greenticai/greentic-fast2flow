@@ -1,0 +1,10 @@
+[package]
+name = "fast2flow-hooks"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+fast2flow-contracts = { path = "../fast2flow-contracts" }
+regex = "1"

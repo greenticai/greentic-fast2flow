@@ -1,0 +1,10 @@
+[package]
+name = "fast2flow-strategy-phase1"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+fast2flow-contracts = { path = "../fast2flow-contracts" }
+fast2flow-strategy = { path = "../fast2flow-strategy" }

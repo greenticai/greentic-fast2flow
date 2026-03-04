@@ -1,0 +1,16 @@
+[package]
+name = "fast2flow-llm-openai"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+fast2flow-llm = { path = "../fast2flow-llm" }
+greentic-secrets-lib.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true

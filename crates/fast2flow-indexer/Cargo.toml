@@ -1,0 +1,12 @@
+[package]
+name = "fast2flow-indexer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+fast2flow-contracts = { path = "../fast2flow-contracts" }
+serde.workspace = true
+serde_json.workspace = true

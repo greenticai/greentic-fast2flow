@@ -1,0 +1,51 @@
+{
+  "stage_order": [
+    "scope",
+    "channel",
+    "provider"
+  ],
+  "default": {
+    "min_confidence": 0.5,
+    "llm_min_confidence": 0.5,
+    "candidate_limit": 20
+  },
+  "scope_overrides": [
+    {
+      "id": "vip-tenant",
+      "priority": 10,
+      "scope": "tenant-a",
+      "rules": {
+        "min_confidence": 0.6,
+        "respond_rules": [
+          {
+            "needle": "refund",
+            "message": "Use the refund self-service form.",
+            "mode": "contains"
+          }
+        ]
+      }
+    }
+  ],
+  "channel_overrides": [
+    {
+      "id": "chat-limits",
+      "priority": 20,
+      "channel": "chat",
+      "rules": {
+        "candidate_limit": 15
+      }
+    }
+  ],
+  "provider_overrides": [
+    {
+      "id": "tests-provider",
+      "priority": 30,
+      "provider": "tests",
+      "rules": {
+        "allow_providers": [
+          "tests"
+        ]
+      }
+    }
+  ]
+}

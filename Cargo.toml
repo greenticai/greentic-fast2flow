@@ -1,0 +1,36 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/fast2flow-contracts",
+  "crates/fast2flow-core",
+  "crates/fast2flow-strategy",
+  "crates/fast2flow-strategy-phase1",
+  "crates/fast2flow-indexer",
+  "crates/fast2flow-hooks",
+  "crates/fast2flow-llm",
+  "crates/fast2flow-llm-openai",
+  "crates/fast2flow-llm-ollama",
+  "crates/fast2flow-routing-gtpack",
+  "cli/fast2flow-cli",
+]
+
+[workspace.package]
+version = "0.4.0"
+edition = "2021"
+rust-version = "1.91"
+license = "Commercial"
+
+[workspace.dependencies]
+anyhow = "1"
+async-trait = "0.1"
+clap = { version = "4", features = ["derive"] }
+greentic-secrets-lib = "0.4"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+wit-bindgen = "0.51"
+
+[workspace.metadata.fast2flow]
+authoritative_crate = "fast2flow-contracts"

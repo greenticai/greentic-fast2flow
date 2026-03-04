@@ -1,0 +1,18 @@
+[
+  {
+    "id": "refund_flow",
+    "pack_id": "support",
+    "target": "support/refund_flow",
+    "title": "Refund Request",
+    "tags": ["refund", "payment", "billing"],
+    "node_ids": ["start", "collect_order", "issue_refund"]
+  },
+  {
+    "id": "shipping_flow",
+    "pack_id": "support",
+    "target": "support/shipping_flow",
+    "title": "Shipping Status",
+    "tags": ["shipping", "delivery", "order"],
+    "node_ids": ["start", "lookup_tracking"]
+  }
+]

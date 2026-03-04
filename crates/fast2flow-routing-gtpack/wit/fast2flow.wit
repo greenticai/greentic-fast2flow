@@ -1,0 +1,41 @@
+package greentic:fast2flow;
+
+interface routing-types {
+  record message-envelope {
+    text: string,
+    channel: option<string>,
+    provider: option<string>,
+  }
+
+  record fast2flow-hook-in-v1 {
+    scope: string,
+    envelope: message-envelope,
+    session-active: bool,
+    input-locale: string,
+    time-budget-ms: u64,
+    registry-path: string,
+    indexes-path: string,
+    now-unix-ms: u64,
+  }
+
+  variant routing-directive {
+    continue,
+    dispatch(tuple<string, float32, string>),
+    respond(string),
+    deny(string),
+  }
+
+  record fast2flow-hook-out-v1 {
+    directive: routing-directive,
+  }
+}
+
+interface routing-hook {
+  use routing-types.{fast2flow-hook-in-v1, fast2flow-hook-out-v1};
+
+  handle-hook: func(request: fast2flow-hook-in-v1) -> fast2flow-hook-out-v1;
+}
+
+world fast2flow-routing {
+  export routing-hook;
+}
