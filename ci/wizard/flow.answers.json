@@ -1,0 +1,10 @@
+{
+  "answers": {
+    "main.menu": "0"
+  },
+  "events": [
+    "0"
+  ],
+  "schema_id": "greentic-flow.wizard.menu.replay",
+  "schema_version": "1.0.0"
+}

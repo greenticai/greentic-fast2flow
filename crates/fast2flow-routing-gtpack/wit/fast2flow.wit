@@ -20,7 +20,7 @@ interface routing-types {
 
   variant routing-directive {
     continue,
-    dispatch(tuple<string, float32, string>),
+    dispatch(tuple<string, f32, string>),
     respond(string),
     deny(string),
   }

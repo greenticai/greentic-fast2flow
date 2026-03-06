@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 publish = false
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 anyhow.workspace = true
 fast2flow-contracts = { path = "../fast2flow-contracts" }
@@ -12,15 +15,17 @@ fast2flow-core = { path = "../fast2flow-core" }
 fast2flow-hooks = { path = "../fast2flow-hooks" }
 fast2flow-indexer = { path = "../fast2flow-indexer" }
 fast2flow-llm = { path = "../fast2flow-llm" }
-fast2flow-llm-ollama = { path = "../fast2flow-llm-ollama" }
-fast2flow-llm-openai = { path = "../fast2flow-llm-openai" }
 fast2flow-strategy = { path = "../fast2flow-strategy" }
 fast2flow-strategy-phase1 = { path = "../fast2flow-strategy-phase1" }
 futures = "0.3"
 regex = "1"
 serde_json.workspace = true
-tokio.workspace = true
 wit-bindgen.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+fast2flow-llm-ollama = { path = "../fast2flow-llm-ollama" }
+fast2flow-llm-openai = { path = "../fast2flow-llm-openai" }
+tokio.workspace = true
 
 [dev-dependencies]
 serial_test = "3"

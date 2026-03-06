@@ -14,7 +14,9 @@ use fast2flow_core::{CandidateIndex, CoreRouter, RouterConfig};
 use fast2flow_hooks::{DefaultHookFilter, RespondRule};
 use fast2flow_indexer::{load_latest, IndexStore};
 use fast2flow_llm::LlmProvider;
+#[cfg(not(target_arch = "wasm32"))]
 use fast2flow_llm_ollama::OllamaProvider;
+#[cfg(not(target_arch = "wasm32"))]
 use fast2flow_llm_openai::OpenAiProvider;
 use fast2flow_strategy::RoutingStrategy;
 use fast2flow_strategy_phase1::Phase1DeterministicStrategy;
@@ -559,6 +561,7 @@ pub fn load_policy_from_env() -> Result<Option<RoutingPolicyV1>> {
     load_policy_from_path(&PathBuf::from(DEFAULT_POLICY_PATH))
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 async fn build_llm(config: &LlmRuntimeConfig) -> Result<Option<Arc<dyn LlmProvider>>> {
     let provider: Option<Arc<dyn LlmProvider>> = match config {
         LlmRuntimeConfig::Disabled => None,
@@ -584,6 +587,17 @@ async fn build_llm(config: &LlmRuntimeConfig) -> Result<Option<Arc<dyn LlmProvid
         }
     };
     Ok(provider)
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn build_llm(config: &LlmRuntimeConfig) -> Result<Option<Arc<dyn LlmProvider>>> {
+    if !matches!(config, LlmRuntimeConfig::Disabled) {
+        return Err(anyhow!(
+            "LLM providers are not supported in wasm32 component runtime; set {}=disabled",
+            ENV_LLM_PROVIDER
+        ));
+    }
+    Ok(None)
 }
 
 fn parse_llm_from_env() -> Result<LlmRuntimeConfig> {
@@ -850,4 +864,6 @@ pub mod wit_entrypoint {
 
     #[allow(dead_code)]
     fn _ensure_wit_types_used(_value: WitEnvelope) {}
+
+    super::generated_bindings::export!(Component with_types_in super::generated_bindings);
 }
