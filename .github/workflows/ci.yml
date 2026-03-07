@@ -180,6 +180,9 @@ jobs:
           CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
         run: |
           set -euo pipefail
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          fi
           cargo build --release --locked --target "${{ matrix.target }}" -p greentic-fast2flow --bin greentic-fast2flow
           cargo build --release --locked --target "${{ matrix.target }}" -p fast2flow-routing-gtpack --bin greentic-fast2flow-routing-host
 
@@ -296,6 +299,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.91.0
+          targets: wasm32-wasip2
 
       - name: Install cargo-binstall
         uses: taiki-e/install-action@cargo-binstall
