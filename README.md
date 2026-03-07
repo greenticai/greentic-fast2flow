@@ -138,7 +138,7 @@ Index/runtime deployment requirements (for either runtime mode):
 
 Publish behavior in this repository:
 
-- Push to `master` triggers `.github/workflows/publish.yml`.
+- Push to `master` triggers `.github/workflows/ci.yml` release jobs.
 - That workflow creates a GitHub Release and uploads platform binaries.
 - That workflow also publishes `fast2flow.gtpack` to GHCR at:
   - `ghcr.io/<owner>/providers/routing-hook/fast2flow.gtpack:v<version>`
@@ -246,6 +246,7 @@ Release workflow is artifact-only (no crates.io publishing) and runs on `master`
 
 - Source of truth version: `workspace.package.version` in root `Cargo.toml`.
 - Authoritative crate key: `workspace.metadata.fast2flow.authoritative_crate`.
+- CI enforces `publish = false` for all workspace crates via `ci/publish_dry_run.sh`.
 - On `master` push, workflow ensures tag `v<version>` exists and creates/updates the GitHub release.
 - It builds and uploads versioned binary archives for both executables:
   - `greentic-fast2flow-v<version>-<target>.(tar.gz|zip)`

@@ -30,11 +30,7 @@ bash ci/build_gtpack.sh "$dist_dir"
 step "validate gtpack wizard replay + dependency metadata"
 bash ci/test_gtpack_replay.sh
 
-step "cargo package + publish dry-run checks"
-if [ "${CI:-}" = "true" ]; then
-  bash ci/publish_dry_run.sh
-else
-  bash ci/publish_dry_run.sh --allow-dirty
-fi
+step "verify crates.io publishing is disabled"
+bash ci/publish_dry_run.sh
 
 step "local checks passed"
