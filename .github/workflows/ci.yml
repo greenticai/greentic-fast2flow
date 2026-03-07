@@ -297,6 +297,15 @@ jobs:
         with:
           toolchain: 1.91.0
 
+      - name: Install cargo-binstall
+        uses: taiki-e/install-action@cargo-binstall
+
+      - name: Install greentic CLI tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo binstall --no-confirm greentic-pack greentic-flow
+
       - name: Build fast2flow.gtpack
         shell: bash
         run: |
