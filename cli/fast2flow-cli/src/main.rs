@@ -12,7 +12,7 @@ use fast2flow_routing_gtpack::load_policy_from_path;
 use fast2flow_strategy_phase1::Phase1DeterministicStrategy;
 
 #[derive(Parser)]
-#[command(name = "fast2flow")]
+#[command(name = "greentic-fast2flow")]
 #[command(about = "Fast2Flow developer CLI")]
 struct Cli {
     #[command(subcommand)]
@@ -213,7 +213,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_else(|_| Duration::from_secs(0))
             .as_nanos();
-        std::env::temp_dir().join(format!("fast2flow-cli-{name}-{suffix}.json"))
+        std::env::temp_dir().join(format!("greentic-fast2flow-{name}-{suffix}.json"))
     }
 
     #[test]

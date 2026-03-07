@@ -4,9 +4,14 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
+autobins = false
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "greentic-fast2flow-routing-host"
+path = "src/bin/fast2flow-routing-host.rs"
 
 [dependencies]
 anyhow.workspace = true

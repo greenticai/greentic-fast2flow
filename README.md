@@ -17,7 +17,7 @@ cargo build --all-features
 2. Build an index from the sample flows:
 
 ```bash
-cargo run -p fast2flow-cli -- index build \
+cargo run -p greentic-fast2flow -- index build \
   --scope tenant-a \
   --flows tests/fixtures/flows.json \
   --output /tmp/indexes
@@ -26,7 +26,7 @@ cargo run -p fast2flow-cli -- index build \
 3. Verify the index exists and is readable:
 
 ```bash
-cargo run -p fast2flow-cli -- index inspect \
+cargo run -p greentic-fast2flow -- index inspect \
   --scope tenant-a \
   --input /tmp/indexes
 ```
@@ -34,7 +34,7 @@ cargo run -p fast2flow-cli -- index inspect \
 4. Run a local routing simulation:
 
 ```bash
-cargo run -p fast2flow-cli -- route simulate \
+cargo run -p greentic-fast2flow -- route simulate \
   --scope tenant-a \
   --text "refund please" \
   --indexes-path /tmp/indexes
@@ -63,18 +63,18 @@ cat > /tmp/hook_request.json <<'JSON'
 JSON
 
 FAST2FLOW_LLM_PROVIDER=disabled \
-cargo run -p fast2flow-routing-gtpack --bin fast2flow-routing-host < /tmp/hook_request.json
+cargo run -p fast2flow-routing-gtpack --bin greentic-fast2flow-routing-host < /tmp/hook_request.json
 ```
 
 6. Optional: enable policy overrides:
 
 ```bash
-cargo run -p fast2flow-cli -- policy print-default > /tmp/fast2flow-policy.json
-cargo run -p fast2flow-cli -- policy validate --file /tmp/fast2flow-policy.json
+cargo run -p greentic-fast2flow -- policy print-default > /tmp/fast2flow-policy.json
+cargo run -p greentic-fast2flow -- policy validate --file /tmp/fast2flow-policy.json
 
 FAST2FLOW_POLICY_PATH=/tmp/fast2flow-policy.json \
 FAST2FLOW_LLM_PROVIDER=disabled \
-cargo run -p fast2flow-routing-gtpack --bin fast2flow-routing-host < /tmp/hook_request.json
+cargo run -p fast2flow-routing-gtpack --bin greentic-fast2flow-routing-host < /tmp/hook_request.json
 ```
 
 7. Optional: enable an LLM provider:
@@ -100,7 +100,7 @@ This is a **Greentic routing hook extension**.
 Runtime options:
 
 - Component runtime: use the wasm entrypoint (`wit_entrypoint`) exported by `fast2flow-routing-gtpack`.
-- Host process runtime: run `fast2flow-routing-host` and pass hook JSON on `stdin` / read directive JSON on `stdout`.
+- Host process runtime: run `greentic-fast2flow-routing-host` and pass hook JSON on `stdin` / read directive JSON on `stdout`.
 
 Local quality gate before packaging:
 
@@ -156,7 +156,7 @@ Publish behavior in this repository:
 - `crates/fast2flow-llm-openai`: OpenAI adapter.
 - `crates/fast2flow-llm-ollama`: Ollama adapter.
 - `crates/fast2flow-routing-gtpack`: Greentic-specific routing extension layer.
-- `cli/fast2flow-cli`: developer CLI (`index build|inspect`, `route simulate`).
+- `cli/fast2flow-cli`: developer CLI binary `greentic-fast2flow` (`index build|inspect`, `route simulate`).
   - Policy tooling: `policy validate`, `policy print-default`.
 
 ## Routing Contract
@@ -193,11 +193,11 @@ LLM fallback is optional. Timeout/unavailable states fail open to `Continue`.
 ## Developer CLI
 
 ```bash
-cargo run -p fast2flow-cli -- index build --scope tenant-a --flows tests/fixtures/flows.json --output /tmp/indexes
-cargo run -p fast2flow-cli -- index inspect --scope tenant-a --input /tmp/indexes
-cargo run -p fast2flow-cli -- route simulate --scope tenant-a --text "refund please" --indexes-path /tmp/indexes
-cargo run -p fast2flow-cli -- policy print-default
-cargo run -p fast2flow-cli -- policy validate --file /tmp/fast2flow-policy.json
+cargo run -p greentic-fast2flow -- index build --scope tenant-a --flows tests/fixtures/flows.json --output /tmp/indexes
+cargo run -p greentic-fast2flow -- index inspect --scope tenant-a --input /tmp/indexes
+cargo run -p greentic-fast2flow -- route simulate --scope tenant-a --text "refund please" --indexes-path /tmp/indexes
+cargo run -p greentic-fast2flow -- policy print-default
+cargo run -p greentic-fast2flow -- policy validate --file /tmp/fast2flow-policy.json
 ```
 
 ## Host Bootstrap
@@ -210,7 +210,7 @@ cargo run -p fast2flow-cli -- policy validate --file /tmp/fast2flow-policy.json
 A host binary entrypoint is included:
 
 ```bash
-cargo run -p fast2flow-routing-gtpack --bin fast2flow-routing-host < hook_request.json
+cargo run -p fast2flow-routing-gtpack --bin greentic-fast2flow-routing-host < hook_request.json
 ```
 
 Relevant env vars:
@@ -247,10 +247,13 @@ Release workflow is artifact-only (no crates.io publishing) and runs on `master`
 - Source of truth version: `workspace.package.version` in root `Cargo.toml`.
 - Authoritative crate key: `workspace.metadata.fast2flow.authoritative_crate`.
 - On `master` push, workflow ensures tag `v<version>` exists and creates/updates the GitHub release.
-- It builds and uploads 6 artifacts:
-  - Linux: `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu` (`.tar.gz`)
-  - macOS 15: `x86_64-apple-darwin`, `aarch64-apple-darwin` (`.tar.gz`)
-  - Windows: `x86_64-pc-windows-msvc`, `aarch64-pc-windows-msvc` (`.zip`)
+- It builds and uploads versioned binary archives for both executables:
+  - `greentic-fast2flow-v<version>-<target>.(tar.gz|zip)`
+  - `greentic-fast2flow-routing-host-v<version>-<target>.(tar.gz|zip)`
+  - targets: Linux (`x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`), macOS 15 (`x86_64-apple-darwin`, `aarch64-apple-darwin`), Windows (`x86_64-pc-windows-msvc`, `aarch64-pc-windows-msvc`)
+- `cargo-binstall` can install from release assets with explicit URL format, for example:
+  - `cargo binstall greentic-fast2flow --version <version> --pkg-url "https://github.com/<owner>/greentic-fast2flow/releases/download/v<version>/greentic-fast2flow-v<version>-<target>.<archive-format>"`
+  - `cargo binstall greentic-fast2flow-routing-host --version <version> --pkg-url "https://github.com/<owner>/greentic-fast2flow/releases/download/v<version>/greentic-fast2flow-routing-host-v<version>-<target>.<archive-format>"`
 - It also publishes a bundled `fast2flow.gtpack` OCI artifact to GHCR:
   - `ghcr.io/<owner>/providers/routing-hook/fast2flow.gtpack:v<version>`
   - `ghcr.io/<owner>/providers/routing-hook/fast2flow.gtpack:latest`

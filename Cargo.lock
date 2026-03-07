@@ -487,31 +487,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "fast2flow-cli"
-version = "0.4.0"
-dependencies = [
- "anyhow",
- "clap",
- "fast2flow-contracts",
- "fast2flow-core",
- "fast2flow-hooks",
- "fast2flow-indexer",
- "fast2flow-routing-gtpack",
- "fast2flow-strategy-phase1",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "fast2flow-contracts"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "fast2flow-core"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "async-trait",
  "fast2flow-contracts",
@@ -526,7 +510,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-hooks"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "fast2flow-contracts",
  "regex",
@@ -534,7 +518,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-indexer"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "fast2flow-contracts",
@@ -544,7 +528,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-llm"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -554,7 +538,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-llm-ollama"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -568,7 +552,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-llm-openai"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -582,7 +566,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-routing-gtpack"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "fast2flow-contracts",
@@ -604,14 +588,14 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-strategy"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "fast2flow-contracts",
 ]
 
 [[package]]
 name = "fast2flow-strategy-phase1"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "fast2flow-contracts",
  "fast2flow-strategy",
@@ -803,6 +787,22 @@ dependencies = [
  "rand_core 0.10.0",
  "wasip2",
  "wasip3",
+]
+
+[[package]]
+name = "greentic-fast2flow"
+version = "0.4.1"
+dependencies = [
+ "anyhow",
+ "clap",
+ "fast2flow-contracts",
+ "fast2flow-core",
+ "fast2flow-hooks",
+ "fast2flow-indexer",
+ "fast2flow-routing-gtpack",
+ "fast2flow-strategy-phase1",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

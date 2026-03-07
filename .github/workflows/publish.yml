@@ -151,8 +151,8 @@ PY
           CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
         run: |
           set -euo pipefail
-          cargo build --release --locked --target "${{ matrix.target }}" -p fast2flow-cli --bin fast2flow-cli
-          cargo build --release --locked --target "${{ matrix.target }}" -p fast2flow-routing-gtpack --bin fast2flow-routing-host
+          cargo build --release --locked --target "${{ matrix.target }}" -p greentic-fast2flow --bin greentic-fast2flow
+          cargo build --release --locked --target "${{ matrix.target }}" -p fast2flow-routing-gtpack --bin greentic-fast2flow-routing-host
 
       - name: Package Unix artifacts
         if: matrix.archive == 'tar.gz'
@@ -164,14 +164,18 @@ PY
           out_dir="release"
           mkdir -p "$out_dir"
 
-          stage="${{ matrix.id }}"
-          mkdir -p "$stage"
-          cp "target/${target}/release/fast2flow-cli" "$stage/"
-          cp "target/${target}/release/fast2flow-routing-host" "$stage/"
+          stage_cli="${{ matrix.id }}-greentic-fast2flow"
+          stage_host="${{ matrix.id }}-greentic-fast2flow-routing-host"
+          mkdir -p "$stage_cli" "$stage_host"
+          cp "target/${target}/release/greentic-fast2flow" "$stage_cli/"
+          cp "target/${target}/release/greentic-fast2flow-routing-host" "$stage_host/"
 
-          archive="$out_dir/fast2flow-${version}-${target}.tar.gz"
-          tar -C "$stage" -czf "$archive" .
-          sha256sum "$archive" > "$archive.sha256"
+          archive_cli="$out_dir/greentic-fast2flow-v${version}-${target}.tar.gz"
+          archive_host="$out_dir/greentic-fast2flow-routing-host-v${version}-${target}.tar.gz"
+          tar -C "$stage_cli" -czf "$archive_cli" .
+          tar -C "$stage_host" -czf "$archive_host" .
+          sha256sum "$archive_cli" > "$archive_cli.sha256"
+          sha256sum "$archive_host" > "$archive_host.sha256"
 
       - name: Package Windows artifacts
         if: matrix.archive == 'zip'
@@ -183,17 +187,25 @@ PY
           $outDir = "release"
           New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
-          $stage = "${{ matrix.id }}"
-          New-Item -ItemType Directory -Force -Path $stage | Out-Null
-          Copy-Item "target/$target/release/fast2flow-cli.exe" "$stage/"
-          Copy-Item "target/$target/release/fast2flow-routing-host.exe" "$stage/"
+          $stageCli = "${{ matrix.id }}-greentic-fast2flow"
+          $stageHost = "${{ matrix.id }}-greentic-fast2flow-routing-host"
+          New-Item -ItemType Directory -Force -Path $stageCli | Out-Null
+          New-Item -ItemType Directory -Force -Path $stageHost | Out-Null
+          Copy-Item "target/$target/release/greentic-fast2flow.exe" "$stageCli/"
+          Copy-Item "target/$target/release/greentic-fast2flow-routing-host.exe" "$stageHost/"
 
-          $archive = "$outDir/fast2flow-$version-$target.zip"
-          if (Test-Path $archive) { Remove-Item $archive }
-          Compress-Archive -Path "$stage/*" -DestinationPath $archive
+          $archiveCli = "$outDir/greentic-fast2flow-v$version-$target.zip"
+          $archiveHost = "$outDir/greentic-fast2flow-routing-host-v$version-$target.zip"
+          if (Test-Path $archiveCli) { Remove-Item $archiveCli }
+          if (Test-Path $archiveHost) { Remove-Item $archiveHost }
+          Compress-Archive -Path "$stageCli/*" -DestinationPath $archiveCli
+          Compress-Archive -Path "$stageHost/*" -DestinationPath $archiveHost
 
-          $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLower()
-          "$hash  $(Split-Path -Leaf $archive)" | Out-File -Encoding ascii "$archive.sha256"
+          $hashCli = (Get-FileHash -Algorithm SHA256 $archiveCli).Hash.ToLower()
+          "$hashCli  $(Split-Path -Leaf $archiveCli)" | Out-File -Encoding ascii "$archiveCli.sha256"
+
+          $hashHost = (Get-FileHash -Algorithm SHA256 $archiveHost).Hash.ToLower()
+          "$hashHost  $(Split-Path -Leaf $archiveHost)" | Out-File -Encoding ascii "$archiveHost.sha256"
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
