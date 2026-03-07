@@ -39,24 +39,24 @@ jobs:
           set -euo pipefail
 
           eval "$(python3 - <<'PY'
-import tomllib
+          import tomllib
 
-with open('Cargo.toml', 'rb') as f:
-    root = tomllib.load(f)
+          with open('Cargo.toml', 'rb') as f:
+              root = tomllib.load(f)
 
-workspace = root.get('workspace', {})
-metadata = workspace.get('metadata', {}).get('fast2flow', {})
-authoritative = metadata.get('authoritative_crate')
-if not authoritative:
-    raise SystemExit('workspace.metadata.fast2flow.authoritative_crate is required')
+          workspace = root.get('workspace', {})
+          metadata = workspace.get('metadata', {}).get('fast2flow', {})
+          authoritative = metadata.get('authoritative_crate')
+          if not authoritative:
+              raise SystemExit('workspace.metadata.fast2flow.authoritative_crate is required')
 
-version = workspace.get('package', {}).get('version')
-if not version:
-    raise SystemExit('workspace.package.version is required')
+          version = workspace.get('package', {}).get('version')
+          if not version:
+              raise SystemExit('workspace.package.version is required')
 
-print(f'CRATE={authoritative}')
-print(f'VERSION={version}')
-PY
+          print(f'CRATE={authoritative}')
+          print(f'VERSION={version}')
+          PY
           )"
 
           EXPECTED_TAG="v${VERSION}"
