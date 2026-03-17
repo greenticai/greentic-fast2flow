@@ -1,6 +1,88 @@
 # Fast2Flow
 
-Fast2Flow is a commercial Greentic routing extension implemented as a Rust workspace. It provides deterministic message-to-flow routing with optional LLM fallback, plus a gtpack integration boundary.
+Fast2Flow is a commercial Greentic routing extension that decides which flow should handle an incoming message.
+
+In plain terms:
+
+- a user sends a message such as "refund please"
+- Fast2Flow looks at the flows available for that tenant
+- it picks the best matching flow
+- it returns a routing decision such as "send this to the refund flow"
+
+The project is implemented as a Rust workspace, but the product goal is simple: route incoming messages to the right flow quickly, predictably, and safely.
+
+## What Problem It Solves
+
+Without Fast2Flow, every incoming message must be handled by hand-written routing logic or sent directly to a larger decision system.
+
+Fast2Flow gives you a middle layer that:
+
+- uses deterministic matching first, so common cases stay fast and explainable
+- supports tenant-specific indexes, so each tenant routes against its own flows
+- can fall back to an LLM only when needed
+- fails open to `Continue` when it cannot make a safe decision
+
+This makes it useful for cases like:
+
+- customer support message routing
+- internal request triage
+- directing messages into known Greentic flows
+
+## Core Concepts
+
+You only need four ideas to understand Fast2Flow:
+
+1. A `flow` is something Fast2Flow can route to, such as `support/refund_flow`.
+2. A `scope` is the routing boundary, usually a tenant or environment, such as `tenant-a`.
+3. An `index` is the searchable snapshot of the flows available in a scope.
+4. A `directive` is Fast2Flow's answer back to the caller.
+
+Possible directives are:
+
+- `Dispatch`: route to a specific flow
+- `Respond`: return a fixed response immediately
+- `Deny`: block routing because policy says not to continue
+- `Continue`: do nothing and let the caller decide what happens next
+
+## How Fast2Flow Works
+
+When a message comes in, Fast2Flow runs this pipeline:
+
+1. Policy and hook checks run first.
+   This can deny a request early, return a fixed response, or allow routing to continue.
+2. Fast2Flow loads the index for the request scope.
+   The index contains the flows that are valid for that tenant or routing scope.
+3. The deterministic strategy scores likely matches.
+   This is the normal path and is intended to handle the majority of traffic.
+4. If the top match is confident enough, Fast2Flow returns `Dispatch`.
+5. If the deterministic result is not strong enough, Fast2Flow can optionally ask an LLM for help.
+6. If no safe answer is available, Fast2Flow returns `Continue`.
+
+The important design rule is that Fast2Flow prefers predictable routing first and only uses the LLM as a fallback.
+
+## Typical Request Lifecycle
+
+Example:
+
+1. You define a flow called `support/refund_flow`.
+2. You build an index for scope `tenant-a`.
+3. A message arrives with text `refund please`.
+4. Fast2Flow checks tenant-a's index.
+5. It sees that the refund flow is the best match.
+6. It returns a directive telling the caller to dispatch to `support/refund_flow`.
+
+If the message is unclear, such as `help`, the deterministic stage may not be confident enough. In that case Fast2Flow either asks the configured LLM for a better guess or returns `Continue`, depending on runtime configuration and thresholds.
+
+## Two Ways To Run It
+
+There are two common ways to use Fast2Flow:
+
+1. Developer CLI
+   Use this to build indexes, inspect them, validate policy files, and simulate routing locally.
+2. Routing host / gtpack integration
+   Use this when Fast2Flow is running as part of a real Greentic routing setup.
+
+If you are new to the project, start with the CLI because it makes the routing behavior easier to see and test.
 
 ## Toolchain
 
@@ -8,13 +90,17 @@ Fast2Flow is a commercial Greentic routing extension implemented as a Rust works
 
 ## Quickstart
 
+This quickstart is the easiest way to see how Fast2Flow works end to end.
+
 1. Build the workspace:
 
 ```bash
 cargo build --all-features
 ```
 
-2. Build an index from the sample flows:
+2. Build an index from the sample flows.
+
+This creates the searchable routing data for scope `tenant-a`.
 
 ```bash
 cargo run -p greentic-fast2flow -- index build \
@@ -31,7 +117,9 @@ cargo run -p greentic-fast2flow -- index inspect \
   --input /tmp/indexes
 ```
 
-4. Run a local routing simulation:
+4. Run a local routing simulation.
+
+This asks Fast2Flow: "If a tenant-a user says `refund please`, where should it go?"
 
 ```bash
 cargo run -p greentic-fast2flow -- route simulate \
@@ -42,7 +130,9 @@ cargo run -p greentic-fast2flow -- route simulate \
 
 Expected result: a `Dispatch` directive targeting the refund flow from `tests/fixtures/flows.json`.
 
-5. Start the host binary with a real hook request:
+5. Start the host binary with a real hook request.
+
+This uses the same routing logic, but through the host binary that a real integration can call.
 
 ```bash
 cat > /tmp/hook_request.json <<'JSON'
@@ -66,7 +156,9 @@ FAST2FLOW_LLM_PROVIDER=disabled \
 cargo run -p fast2flow-routing-gtpack --bin greentic-fast2flow-routing-host < /tmp/hook_request.json
 ```
 
-6. Optional: enable policy overrides:
+6. Optional: enable policy overrides.
+
+Policies let you control routing behavior without changing code.
 
 ```bash
 cargo run -p greentic-fast2flow -- policy print-default > /tmp/fast2flow-policy.json
@@ -77,7 +169,9 @@ FAST2FLOW_LLM_PROVIDER=disabled \
 cargo run -p fast2flow-routing-gtpack --bin greentic-fast2flow-routing-host < /tmp/hook_request.json
 ```
 
-7. Optional: enable an LLM provider:
+7. Optional: enable an LLM provider.
+
+Use this only when deterministic matching is not enough for your use case.
 
 - OpenAI:
   - Set `FAST2FLOW_LLM_PROVIDER=openai`.
@@ -101,6 +195,23 @@ Runtime options:
 
 - Component runtime: use the wasm entrypoint (`wit_entrypoint`) exported by `fast2flow-routing-gtpack`.
 - Host process runtime: run `greentic-fast2flow-routing-host` and pass hook JSON on `stdin` / read directive JSON on `stdout`.
+
+## What You Need In Production
+
+To run Fast2Flow in a real environment, you typically need:
+
+- a registry mounted at `/mnt/registry`
+- built indexes mounted at `/mnt/indexes/<scope>/...`
+- a chosen LLM mode via `FAST2FLOW_LLM_PROVIDER`
+- an optional routing policy file
+
+In other words, production use is:
+
+1. define your flows
+2. build indexes for each scope
+3. mount those indexes where the runtime can read them
+4. send Fast2Flow a hook request
+5. act on the returned directive
 
 Local quality gate before packaging:
 
@@ -189,6 +300,20 @@ Output contract: `Fast2FlowHookOutV1` with `RoutingDirective`
 6. Directive output
 
 LLM fallback is optional. Timeout/unavailable states fail open to `Continue`.
+
+## Policy Model
+
+Policies are how you change routing behavior without rebuilding the application.
+
+They can be used to:
+
+- set confidence thresholds
+- limit candidate counts
+- allow or deny certain scopes, channels, or providers
+- define direct response rules
+- override behavior for specific routing situations
+
+This is useful when a tenant needs stricter controls or different routing behavior than the default.
 
 ## Developer CLI
 
