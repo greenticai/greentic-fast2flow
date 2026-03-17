@@ -1,5 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use fast2flow_contracts::{Candidate, FlowDoc, IndexEntryV1, IndexManifestV1};
@@ -77,11 +79,9 @@ fn write_manifest(indexes_root: &Path, scope: &str, manifest: &IndexManifestV1) 
         .with_context(|| format!("failed creating {}", scope_dir.display()))?;
 
     let final_name = "index.json";
-    let tmp_name = "index.json.tmp";
-
-    let tmp_path = scope_dir.join(tmp_name);
+    let tmp_path = unique_tmp_path(&scope_dir, final_name);
     let final_path = scope_dir.join(final_name);
-    let latest_tmp = scope_dir.join("latest.tmp");
+    let latest_tmp = unique_tmp_path(&scope_dir, "latest");
     let latest_path = scope_dir.join("latest");
 
     let payload = serde_json::to_string_pretty(manifest)?;
@@ -96,6 +96,14 @@ fn write_manifest(indexes_root: &Path, scope: &str, manifest: &IndexManifestV1) 
         .with_context(|| format!("failed atomically updating {}", latest_path.display()))?;
 
     Ok(())
+}
+
+fn unique_tmp_path(scope_dir: &Path, base_name: &str) -> PathBuf {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_else(|_| Duration::from_secs(0))
+        .as_nanos();
+    scope_dir.join(format!("{base_name}.{}.{}.tmp", process::id(), now))
 }
 
 fn search_manifest(manifest: &IndexManifestV1, text: &str, limit: usize) -> Vec<Candidate> {

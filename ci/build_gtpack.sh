@@ -28,7 +28,14 @@ allow_placeholder="${FAST2FLOW_ALLOW_PLACEHOLDER_WASM:-0}"
 export_pack_source="${FAST2FLOW_EXPORT_PACK_SOURCE:-}"
 
 greentic-pack new --dir "$work_dir" "$pack_id"
-sed -i "s/^version: .*/version: ${version}/" "$pack_dir/pack.yaml"
+awk '
+$0 ~ /^version: / {
+  print "version: " VERSION
+  next
+}
+{ print }
+' VERSION="$version" "$pack_dir/pack.yaml" > "$pack_dir/pack.yaml.tmp"
+mv "$pack_dir/pack.yaml.tmp" "$pack_dir/pack.yaml"
 # Declare control-chain capability dependency so deployment fails clearly if missing.
 awk '
 BEGIN { replaced = 0 }
