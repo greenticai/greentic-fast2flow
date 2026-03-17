@@ -9,6 +9,7 @@ from pathlib import Path
 
 TOOL_SCHEMA_URL = "https://raw.githubusercontent.com/greentic-biz/customers-tools/main/schemas/tool.schema.json"
 DOC_SCHEMA_URL = "https://raw.githubusercontent.com/greentic-biz/customers-tools/main/schemas/doc.schema.json"
+STORE_SCHEMA_URL = "https://raw.githubusercontent.com/greentic-biz/customers-tools/main/schemas/store.schema.json"
 DOC_ID = "greentic-fast2flow-readme"
 TOOL_ID = "greentic-fast2flow"
 TOOL_NAME = "Greentic Fast2Flow"
@@ -89,6 +90,16 @@ def build_docs_manifest(repository: str) -> dict:
     }
 
 
+def build_store_manifest(version: str) -> dict:
+    return {
+        "$schema": STORE_SCHEMA_URL,
+        "schema_version": "1",
+        "items": [
+            f"store://greentic-biz/{{tenant}}/providers/routing-hook/fast2flow.gtpack:{version}",
+        ],
+    }
+
+
 def write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
@@ -106,6 +117,10 @@ def main() -> int:
     write_json(
         artifacts_dir / f"{TOOL_ID}-docs.json",
         build_docs_manifest(args.repository),
+    )
+    write_json(
+        artifacts_dir / f"{TOOL_ID}-store.json",
+        build_store_manifest(args.version),
     )
     return 0
 
