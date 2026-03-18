@@ -95,7 +95,7 @@ def build_store_manifest(version: str) -> dict:
         "$schema": STORE_SCHEMA_URL,
         "schema_version": "1",
         "items": [
-            f"store://greentic-biz/{{tenant}}/providers/routing-hook/fast2flow.gtpack:{version}",
+            f"store://greentic-biz/{{tenant}}/providers/routing-hook/fast2flow.gtpack:v{version}",
         ],
     }
 
