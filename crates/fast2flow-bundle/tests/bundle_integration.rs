@@ -6,8 +6,7 @@ use fast2flow_bundle::hooks::{index_bundle_after_setup, validate_bundle};
 use fast2flow_bundle::{build_index_manifest, generate_intents_md, scan_bundle};
 
 fn sample_bundle_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../tests/fixtures/sample-bundle")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/sample-bundle")
 }
 
 #[test]
@@ -34,10 +33,7 @@ fn scan_bundle_extracts_pack_ids() {
         .collect();
     assert_eq!(support_flows.len(), 3, "support-pack should have 3 flows");
 
-    let hr_flows: Vec<_> = entries
-        .iter()
-        .filter(|e| e.pack_id == "hr-pack")
-        .collect();
+    let hr_flows: Vec<_> = entries.iter().filter(|e| e.pack_id == "hr-pack").collect();
     assert_eq!(hr_flows.len(), 2, "hr-pack should have 2 flows");
 }
 
@@ -183,7 +179,10 @@ fn index_bundle_without_docs() {
 
     assert_eq!(result.flow_count, 5);
     assert!(result.index_path.is_some());
-    assert!(result.intents_path.is_none(), "Should not generate intents.md when generate_docs=false");
+    assert!(
+        result.intents_path.is_none(),
+        "Should not generate intents.md when generate_docs=false"
+    );
 }
 
 #[test]
@@ -213,8 +212,7 @@ fn index_manifest_is_deserializable() {
     // Read back and deserialize the index
     let index_path = output_dir.path().join("index.json");
     let index_json = std::fs::read_to_string(&index_path).unwrap();
-    let manifest: fast2flow_bundle::IndexManifest =
-        serde_json::from_str(&index_json).unwrap();
+    let manifest: fast2flow_bundle::IndexManifest = serde_json::from_str(&index_json).unwrap();
 
     assert_eq!(manifest.scope, "demo:default");
     assert_eq!(manifest.flows.len(), 5);

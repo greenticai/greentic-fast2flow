@@ -2,7 +2,7 @@
 //!
 //! Builds a searchable index from flow metadata for fast intent matching.
 
-use greentic_interfaces_guest::component_v0_6::node;
+use greentic_interfaces_guest::component_v0_6::{component_i18n, component_qa, node};
 
 #[allow(dead_code)]
 mod descriptor;
@@ -84,5 +84,29 @@ impl node::Guest for Component {
     }
 }
 
+impl component_qa::Guest for Component {
+    fn qa_spec(_mode: component_qa::QaMode) -> Vec<u8> {
+        vec![]
+    }
+
+    fn apply_answers(
+        _mode: component_qa::QaMode,
+        _current_config: Vec<u8>,
+        _answers: Vec<u8>,
+    ) -> Vec<u8> {
+        vec![]
+    }
+}
+
+impl component_i18n::Guest for Component {
+    fn i18n_keys() -> Vec<String> {
+        vec![]
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
-greentic_interfaces_guest::export_component_v060!(Component);
+greentic_interfaces_guest::export_component_v060!(
+    Component,
+    component_qa: Component,
+    component_i18n: Component,
+);
