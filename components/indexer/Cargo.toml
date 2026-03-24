@@ -1,0 +1,26 @@
+[package]
+name = "fast2flow-component-indexer"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.91"
+license = "Commercial"
+publish = false
+description = "Greentic component to build flow index for fast2flow routing"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[package.metadata.greentic]
+abi_version = "0.6.0"
+
+[package.metadata.component]
+package = "greentic:component"
+
+[package.metadata.component.target]
+world = "greentic:component/component-v0-v6-v0@0.6.0"
+
+[dependencies]
+greentic-types = "0.4"
+greentic-interfaces-guest = { version = "0.4", default-features = false, features = ["component-v0-6"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

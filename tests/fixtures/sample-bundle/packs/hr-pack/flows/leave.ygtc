@@ -1,0 +1,17 @@
+id: leave_request
+title: Submit Leave Request
+description: Apply for vacation days, sick leave, or personal time off
+type: messaging
+tags:
+  - hr
+  - leave
+  - vacation
+  - time-off
+start: collect
+
+nodes:
+  collect:
+    templating.handlebars:
+      text: "What type of leave would you like to request?"
+    routing:
+      - out: true

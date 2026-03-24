@@ -1,0 +1,30 @@
+id: index_flows
+title: Build Flow Index
+description: Build search index from flow metadata on pack deploy.
+type: events
+start: extract
+
+parameters:
+  tenant_id: "{{context.tenant_id}}"
+  team_id: "{{context.team_id}}"
+
+nodes:
+  extract:
+    # Extract flow metadata from deployed packs
+    # In practice, this would be triggered by pack deploy events
+    fast2flow.indexer:
+      op: build
+      flows: "{{input.flows}}"
+      tenant_id: "{{parameters.tenant_id}}"
+      team_id: "{{parameters.team_id}}"
+    routing:
+      - to: store
+
+  store:
+    # Store index in state store
+    state.set:
+      key: "{{extract.index_key}}"
+      value: "{{extract.index}}"
+      ttl: null  # Persist indefinitely
+    routing:
+      - out: true

@@ -1,0 +1,17 @@
+id: book_appointment
+title: Book Meeting Room
+description: Reserve a meeting room or schedule an appointment with HR
+type: messaging
+tags:
+  - booking
+  - meeting
+  - calendar
+  - appointment
+start: select_room
+
+nodes:
+  select_room:
+    templating.handlebars:
+      text: "Which meeting room would you like to book?"
+    routing:
+      - out: true

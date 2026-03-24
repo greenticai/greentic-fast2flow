@@ -1,0 +1,16 @@
+id: faq_lookup
+title: FAQ and Knowledge Base
+description: Search frequently asked questions and knowledge base articles
+type: messaging
+tags:
+  - faq
+  - help
+  - knowledge-base
+start: search
+
+nodes:
+  search:
+    templating.handlebars:
+      text: "Searching FAQ for: {{input.text}}"
+    routing:
+      - out: true

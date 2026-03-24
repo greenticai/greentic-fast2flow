@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+  # Host crates (edition 2021)
   "crates/fast2flow-contracts",
   "crates/fast2flow-core",
   "crates/fast2flow-strategy",
@@ -11,11 +12,12 @@ members = [
   "crates/fast2flow-llm-openai",
   "crates/fast2flow-llm-ollama",
   "crates/fast2flow-routing-gtpack",
+  "crates/fast2flow-bundle",
   "cli/fast2flow-cli",
 ]
 
 [workspace.package]
-version = "0.4.5"
+version = "0.4.6"
 edition = "2021"
 rust-version = "1.91"
 license = "Commercial"

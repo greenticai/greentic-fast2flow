@@ -1,0 +1,22 @@
+id: refund_request
+title: Process Refund Request
+description: Handle customer refund requests for orders and payments
+type: messaging
+tags:
+  - refund
+  - payment
+  - billing
+  - customer-service
+start: collect_info
+
+nodes:
+  collect_info:
+    templating.handlebars:
+      text: "Please provide your order number."
+    routing:
+      - to: process
+  process:
+    templating.handlebars:
+      text: "Processing refund for order {{input.order_id}}"
+    routing:
+      - out: true

@@ -1,0 +1,110 @@
+pack_id: greentic.fast2flow
+version: 0.1.0
+kind: extension
+publisher: Greentic
+
+components:
+  - id: fast2flow.indexer
+    version: 0.1.0
+    world: greentic:component/component-v0-v6-v0@0.6.0
+    supports:
+      - messaging
+      - events
+    profiles:
+      default: default
+      supported:
+        - default
+    capabilities:
+      wasi:
+        random: false
+        clocks: true
+      host: {}
+    wasm: components/indexer.wasm
+
+  - id: fast2flow.matcher
+    version: 0.1.0
+    world: greentic:component/component-v0-v6-v0@0.6.0
+    supports:
+      - messaging
+    profiles:
+      default: default
+      supported:
+        - default
+    capabilities:
+      wasi:
+        random: false
+        clocks: true
+      host: {}
+    wasm: components/matcher.wasm
+
+  - id: fast2flow.router
+    version: 0.1.0
+    world: greentic:component/component-v0-v6-v0@0.6.0
+    supports:
+      - messaging
+    profiles:
+      default: default
+      supported:
+        - default
+    capabilities:
+      wasi:
+        random: false
+        clocks: true
+      host: {}
+    wasm: components/router.wasm
+
+flows:
+  - id: index_flows
+    file: flows/index.ygtc
+    tags:
+      - setup
+      - indexer
+    entrypoints:
+      - deploy
+
+  - id: match_intent
+    file: flows/match.ygtc
+    tags:
+      - runtime
+      - matcher
+    entrypoints:
+      - default
+
+  - id: route_message
+    file: flows/route.ygtc
+    tags:
+      - runtime
+      - router
+    entrypoints:
+      - default
+
+extensions:
+  greentic.ext.provides.v1:
+    inline:
+      provides:
+        - id: fast2flow.indexer
+          kind: component
+          contract: greentic.component.v0.6.0
+          description: "Build flow index from pack metadata"
+        - id: fast2flow.matcher
+          kind: component
+          contract: greentic.component.v0.6.0
+          description: "Fast BM25-based intent matching"
+        - id: fast2flow.router
+          kind: component
+          contract: greentic.component.v0.6.0
+          description: "Intelligent flow routing with LLM fallback"
+
+  greentic.ext.offers.v1:
+    inline:
+      offers:
+        - id: fast2flow-hook
+          kind: hook
+          stage: post_ingress
+          contract: greentic.hook.control.v1
+          priority: 50
+          provider:
+            op: route
+
+assets:
+  - path: README.md
