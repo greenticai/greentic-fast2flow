@@ -4,9 +4,9 @@
 
 use greentic_interfaces_guest::component_v0_6::node;
 
-pub mod route;
 #[allow(dead_code)]
 mod descriptor;
+pub mod route;
 mod schema;
 
 #[cfg(target_arch = "wasm32")]

@@ -298,8 +298,12 @@ mod tests {
         }
 
         let query_terms = tokenize("I want to book an appointment");
-        let scores =
-            calculate_bm25_scores(&query_terms, &flows, &term_frequencies, &document_frequencies);
+        let scores = calculate_bm25_scores(
+            &query_terms,
+            &flows,
+            &term_frequencies,
+            &document_frequencies,
+        );
 
         // Booking flow should score higher for this query
         assert!(scores[0] > scores[1]);
