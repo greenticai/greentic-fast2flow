@@ -1,0 +1,17 @@
+id: shipping_status
+title: Check Shipping Status
+description: Look up shipping and delivery tracking information for orders
+type: messaging
+tags:
+  - shipping
+  - delivery
+  - tracking
+  - order
+start: lookup
+
+nodes:
+  lookup:
+    templating.handlebars:
+      text: "Looking up tracking for order {{input.order_id}}"
+    routing:
+      - out: true

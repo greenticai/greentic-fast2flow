@@ -96,7 +96,7 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   test:
     name: Test
@@ -108,7 +108,34 @@ jobs:
           toolchain: 1.91.0
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --all-features
+        run: cargo test --workspace --all-features
+
+  build-wasm-components:
+    name: Build WASM Components
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.91.0
+          targets: wasm32-wasip2
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: components
+      - name: Build WASM components
+        run: cd components && cargo build --target wasm32-wasip2 --release
+      - name: Verify WASM artifacts
+        run: |
+          set -euo pipefail
+          for component in indexer matcher router; do
+            wasm="components/target/wasm32-wasip2/release/fast2flow_component_${component}.wasm"
+            if [ ! -f "$wasm" ]; then
+              echo "Missing WASM artifact: $wasm" >&2
+              exit 1
+            fi
+            size=$(stat -c%s "$wasm" 2>/dev/null || stat -f%z "$wasm")
+            echo "  $component: ${size} bytes"
+          done
 
   package-dry-run:
     name: Package Dry Run
@@ -130,6 +157,7 @@ jobs:
       - version-check
       - lint
       - test
+      - build-wasm-components
       - package-dry-run
     strategy:
       fail-fast: false
@@ -302,6 +330,7 @@ jobs:
       - version-check
       - lint
       - test
+      - build-wasm-components
       - package-dry-run
     steps:
       - uses: actions/checkout@v4

@@ -1,0 +1,31 @@
+# WASM Components Workspace
+#
+# This is a separate workspace for WASM components (edition 2024).
+# Host crates use the root workspace (edition 2021).
+#
+# Build with: cargo build --target wasm32-wasip2 --release
+# Or use: make wasm (from root)
+
+[workspace]
+resolver = "2"
+members = [
+    "indexer",
+    "matcher",
+    "router",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.91"
+license = "Commercial"
+
+[workspace.dependencies]
+greentic-types = "0.4"
+greentic-interfaces-guest = { version = "0.4", default-features = false, features = ["component-v0-6"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["alloc", "serde", "std", "clock"] }
+
+[patch.crates-io]
+greentic-types = { path = "../../greentic-types" }
+greentic-interfaces-guest = { path = "../../greentic-interfaces/crates/greentic-interfaces-guest" }

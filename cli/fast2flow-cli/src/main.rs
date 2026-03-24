@@ -21,14 +21,22 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Index management commands (existing flow-based indexer)
     Index {
         #[command(subcommand)]
         command: IndexCommands,
     },
+    /// Bundle scanning and indexing commands
+    Bundle {
+        #[command(subcommand)]
+        command: BundleCommands,
+    },
+    /// Routing simulation commands
     Route {
         #[command(subcommand)]
         command: RouteCommands,
     },
+    /// Policy management commands
     Policy {
         #[command(subcommand)]
         command: PolicyCommands,
@@ -80,11 +88,49 @@ enum PolicyCommands {
     PrintDefault,
 }
 
+#[derive(Subcommand)]
+enum BundleCommands {
+    /// Scan bundle and build fast2flow index
+    Index {
+        /// Bundle directory path
+        #[arg(short, long, default_value = ".")]
+        bundle: PathBuf,
+
+        /// Output directory for generated files
+        #[arg(short, long, default_value = ".")]
+        output: PathBuf,
+
+        /// Tenant ID for index scope
+        #[arg(long, default_value = "demo")]
+        tenant: String,
+
+        /// Team ID for index scope
+        #[arg(long, default_value = "default")]
+        team: String,
+
+        /// Generate intents.md documentation
+        #[arg(long, default_value_t = true)]
+        generate_docs: bool,
+
+        /// Verbose output
+        #[arg(short, long)]
+        verbose: bool,
+    },
+
+    /// Validate bundle structure contains indexable flows
+    Validate {
+        /// Bundle directory path
+        #[arg(short, long, default_value = ".")]
+        bundle: PathBuf,
+    },
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Commands::Index { command } => run_index(command),
+        Commands::Bundle { command } => run_bundle(command),
         Commands::Route { command } => run_route(command).await,
         Commands::Policy { command } => run_policy(command),
     }
@@ -114,6 +160,66 @@ fn run_index(command: IndexCommands) -> Result<()> {
                 store.manifest().entries.len()
             );
             Ok(())
+        }
+    }
+}
+
+fn run_bundle(command: BundleCommands) -> Result<()> {
+    match command {
+        BundleCommands::Index {
+            bundle,
+            output,
+            tenant,
+            team,
+            generate_docs,
+            verbose,
+        } => {
+            if verbose {
+                eprintln!("Indexing bundle: {}", bundle.display());
+            }
+
+            let result = fast2flow_bundle::hooks::index_bundle_after_setup(
+                &bundle,
+                &output,
+                &tenant,
+                &team,
+                generate_docs,
+            )?;
+
+            if result.flow_count == 0 {
+                eprintln!("No flows found in bundle");
+                return Ok(());
+            }
+
+            if verbose {
+                eprintln!("\nIndex summary:");
+                eprintln!("  - Flows indexed: {}", result.flow_count);
+                eprintln!("  - Scope: {}:{}", tenant, team);
+                eprintln!("  - Index key: fast2flow:index:{}:{}", tenant, team);
+            }
+
+            if let Some(path) = &result.index_path {
+                println!("Wrote index: {}", path.display());
+            }
+            if let Some(path) = &result.intents_path {
+                println!("Wrote intents: {}", path.display());
+            }
+
+            // Print manifest summary as JSON
+            println!("{}", serde_json::to_string_pretty(&result.manifest)?);
+
+            Ok(())
+        }
+        BundleCommands::Validate { bundle } => {
+            if fast2flow_bundle::hooks::validate_bundle(&bundle) {
+                println!("Bundle is valid and contains indexable flows.");
+                Ok(())
+            } else {
+                anyhow::bail!(
+                    "Bundle does not contain any indexable flows: {}",
+                    bundle.display()
+                );
+            }
         }
     }
 }

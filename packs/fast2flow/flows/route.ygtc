@@ -1,0 +1,44 @@
+id: route_message
+title: Route Message to Flow
+description: Full routing pipeline with optional LLM fallback.
+type: messaging
+start: match
+
+parameters:
+  tenant_id: "{{context.tenant_id}}"
+  team_id: "{{context.team_id}}"
+  confidence_threshold: 0.7
+  enable_llm_fallback: false
+  blocked_intents: []
+
+nodes:
+  match:
+    # First, run fast matching
+    flow.call:
+      flow: match_intent
+      input:
+        text: "{{input.text}}"
+      params:
+        tenant_id: "{{parameters.tenant_id}}"
+        team_id: "{{parameters.team_id}}"
+    routing:
+      - to: route
+
+  route:
+    # Make routing decision based on match result
+    fast2flow.router:
+      op: route
+      message:
+        id: "{{input.id}}"
+        text: "{{input.text}}"
+        channel: "{{input.channel}}"
+        session_id: "{{input.session_id}}"
+      match_result: "{{match}}"
+      tenant_id: "{{parameters.tenant_id}}"
+      team_id: "{{parameters.team_id}}"
+      config:
+        confidence_threshold: "{{parameters.confidence_threshold}}"
+        enable_llm_fallback: "{{parameters.enable_llm_fallback}}"
+        blocked_intents: "{{parameters.blocked_intents}}"
+    routing:
+      - out: true

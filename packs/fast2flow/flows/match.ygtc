@@ -1,0 +1,40 @@
+id: match_intent
+title: Match User Intent
+description: Fast BM25-based intent matching against flow index.
+type: messaging
+start: load_index
+
+parameters:
+  tenant_id: "{{context.tenant_id}}"
+  team_id: "{{context.team_id}}"
+  threshold: 0.7
+  max_results: 5
+
+nodes:
+  load_index:
+    # Load index from state store
+    state.get:
+      key: "fast2flow:index:{{parameters.tenant_id}}:{{parameters.team_id | default: 'default'}}"
+    routing:
+      - to: match
+        when: "{{load_index.value != null}}"
+      - to: no_index
+        when: "{{load_index.value == null}}"
+
+  match:
+    # Run BM25 matching
+    fast2flow.matcher:
+      op: match
+      query: "{{input.text}}"
+      index: "{{load_index.value}}"
+      threshold: "{{parameters.threshold}}"
+      max_results: "{{parameters.max_results}}"
+    routing:
+      - out: true
+
+  no_index:
+    # No index found, return empty result
+    templating.handlebars:
+      text: "{{json_encode (hash 'status' 'no_index' 'candidates' (array))}}"
+    routing:
+      - out: true
