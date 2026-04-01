@@ -1,7 +1,13 @@
 name: Dependency Review
+# DISABLED: dependency-review-action requires GitHub Advanced Security (GHAS)
+# on private repos. Re-enable the pull_request trigger when GHAS is available
+# for the greentic-biz org.
+#
+# on:
+#   pull_request:
+#     branches: [main]
 on:
-  pull_request:
-    branches: [main]
+  workflow_dispatch: {}
 permissions:
   contents: write
   pull-requests: write
