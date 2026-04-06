@@ -1,3 +1,5 @@
+# Disabled: CodeQL requires GitHub Advanced Security, which is not available
+# on the free plan for private repositories. Re-enable if the plan is upgraded.
 name: CodeQL
 on:
   push:
@@ -15,6 +17,7 @@ concurrency:
 
 jobs:
   codeql:
+    if: false
     uses: greenticai/.github/.github/workflows/codeql.yml@main
     with:
       toolchain-variant: wasm
