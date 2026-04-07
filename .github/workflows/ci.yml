@@ -346,7 +346,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo binstall --no-confirm gtc greentic-pack
+          cargo binstall --no-confirm gtc greentic-dev greentic-pack
 
       - name: Build fast2flow.gtpack
         shell: bash
