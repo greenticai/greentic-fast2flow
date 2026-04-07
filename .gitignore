@@ -1,6 +1,6 @@
 /target
 /dist
-
+.greentic/
 # CI workflow artifacts (codex-security-fix, dependency-review, codex-semver-fix)
 all-dependabot-alerts.json
 all-code-scanning-alerts.json

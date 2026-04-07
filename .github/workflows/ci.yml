@@ -200,6 +200,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
+          rustup target add aarch64-unknown-linux-gnu
 
       - name: Build binaries
         shell: bash
@@ -345,7 +346,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo binstall --no-confirm greentic-pack greentic-flow
+          cargo binstall --no-confirm gtc greentic-pack
 
       - name: Build fast2flow.gtpack
         shell: bash

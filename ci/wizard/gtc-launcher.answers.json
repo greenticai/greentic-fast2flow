@@ -1,0 +1,25 @@
+{
+  "wizard_id": "greentic-dev.wizard.launcher.main",
+  "schema_id": "greentic-dev.launcher.main",
+  "schema_version": "1.0.0",
+  "locale": "en-GB",
+  "answers": {
+    "selected_action": "pack",
+    "delegate_answer_document": {
+      "wizard_id": "greentic-pack.wizard.run",
+      "schema_id": "greentic-pack.wizard.answers",
+      "schema_version": "1.0.0",
+      "locale": "en-GB",
+      "answers": {
+        "pack_dir": ".",
+        "run_delegate_flow": false,
+        "run_delegate_component": false,
+        "run_doctor": false,
+        "run_build": false,
+        "sign": false
+      },
+      "locks": {}
+    }
+  },
+  "locks": {}
+}
