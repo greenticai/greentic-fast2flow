@@ -20,8 +20,7 @@ trap 'rm -rf "$work_dir"' EXIT
 
 pack_id="fast2flow"
 pack_dir="$work_dir"
-wizard_answers="$repo_root/ci/wizard/finalize.answers.json"
-flow_wizard_answers="$repo_root/ci/wizard/flow.answers.json"
+launcher_answers="$repo_root/ci/wizard/gtc-launcher.answers.json"
 schema_template="$repo_root/ci/templates/routing-hook-fast2flow-config.schema.json"
 component_wasm_src="${FAST2FLOW_COMPONENT_WASM:-}"
 allow_placeholder="${FAST2FLOW_ALLOW_PLACEHOLDER_WASM:-0}"
@@ -60,10 +59,11 @@ mv "$pack_dir/pack.yaml.tmp" "$pack_dir/pack.yaml"
 
 (
   cd "$pack_dir"
-  greentic-pack wizard run \
-    --answers "$wizard_answers" \
-    --emit-answers "$work_dir/wizard.finalize.applied.answers.json"
-  greentic-flow wizard . --answers-file "$flow_wizard_answers"
+  gtc wizard apply \
+    --answers "$launcher_answers" \
+    --non-interactive \
+    --yes \
+    --emit-answers "$work_dir/wizard.launcher.applied.answers.json"
 )
 
 mkdir -p "$pack_dir/components"
