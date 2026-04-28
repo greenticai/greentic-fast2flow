@@ -2,6 +2,7 @@
 name = "fast2flow-routing-gtpack"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 publish = false
 autobins = false
@@ -15,22 +16,22 @@ path = "src/bin/fast2flow-routing-host.rs"
 
 [dependencies]
 anyhow.workspace = true
-fast2flow-contracts = { path = "../fast2flow-contracts" }
-fast2flow-core = { path = "../fast2flow-core" }
-fast2flow-hooks = { path = "../fast2flow-hooks" }
-fast2flow-indexer = { path = "../fast2flow-indexer" }
-fast2flow-llm = { path = "../fast2flow-llm" }
-fast2flow-strategy = { path = "../fast2flow-strategy" }
-fast2flow-strategy-phase1 = { path = "../fast2flow-strategy-phase1" }
-futures = "0.3"
-regex = "1"
+fast2flow-contracts.workspace = true
+fast2flow-core.workspace = true
+fast2flow-hooks.workspace = true
+fast2flow-indexer.workspace = true
+fast2flow-llm.workspace = true
+fast2flow-strategy.workspace = true
+fast2flow-strategy-phase1.workspace = true
+futures.workspace = true
+regex.workspace = true
 serde_json.workspace = true
 wit-bindgen.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-fast2flow-llm-ollama = { path = "../fast2flow-llm-ollama" }
-fast2flow-llm-openai = { path = "../fast2flow-llm-openai" }
+fast2flow-llm-ollama.workspace = true
+fast2flow-llm-openai.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
-serial_test = "3"
+serial_test.workspace = true

@@ -2,18 +2,19 @@
 name = "fast2flow-bundle"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 publish = false
 description = "Bundle scanning and indexing for fast2flow routing"
 
 [dependencies]
 anyhow.workspace = true
-chrono = { version = "0.4", features = ["serde"] }
-fast2flow-contracts = { path = "../fast2flow-contracts" }
+chrono = { workspace = true, features = ["serde", "std", "clock"] }
+fast2flow-contracts.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-serde_yaml_bw = { package = "serde_yaml_gtc", version = "2.5" }
-walkdir = "2.5"
+serde_yaml_bw.workspace = true
+walkdir.workspace = true
 
 [dev-dependencies]
-tempfile = "3"
+tempfile.workspace = true

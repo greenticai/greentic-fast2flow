@@ -1,7 +1,6 @@
 # Fast2Flow Build System
 #
-# Host crates (edition 2021) use the root workspace.
-# WASM components (edition 2024) use components/ workspace.
+# Host crates and WASM components use the root workspace.
 
 .PHONY: build wasm pack test lint fmt check clean help
 
@@ -14,24 +13,24 @@ build:
 
 ## Build WASM components (requires wasm32-wasip2 target)
 wasm:
-	cd components && cargo build --target wasm32-wasip2 --release
+	cargo build -p fast2flow-component-indexer -p fast2flow-component-matcher -p fast2flow-component-router --target wasm32-wasip2 --release
 
 ## Build individual WASM components
 wasm-indexer:
-	cd components && cargo build -p fast2flow-component-indexer --target wasm32-wasip2 --release
+	cargo build -p fast2flow-component-indexer --target wasm32-wasip2 --release
 
 wasm-matcher:
-	cd components && cargo build -p fast2flow-component-matcher --target wasm32-wasip2 --release
+	cargo build -p fast2flow-component-matcher --target wasm32-wasip2 --release
 
 wasm-router:
-	cd components && cargo build -p fast2flow-component-router --target wasm32-wasip2 --release
+	cargo build -p fast2flow-component-router --target wasm32-wasip2 --release
 
 ## Build fast2flow.gtpack
 pack: wasm
 	@mkdir -p dist/components
-	@cp components/target/wasm32-wasip2/release/fast2flow_component_indexer.wasm dist/components/indexer.wasm 2>/dev/null || true
-	@cp components/target/wasm32-wasip2/release/fast2flow_component_matcher.wasm dist/components/matcher.wasm 2>/dev/null || true
-	@cp components/target/wasm32-wasip2/release/fast2flow_component_router.wasm dist/components/router.wasm 2>/dev/null || true
+	@cp target/wasm32-wasip2/release/fast2flow_component_indexer.wasm dist/components/indexer.wasm 2>/dev/null || true
+	@cp target/wasm32-wasip2/release/fast2flow_component_matcher.wasm dist/components/matcher.wasm 2>/dev/null || true
+	@cp target/wasm32-wasip2/release/fast2flow_component_router.wasm dist/components/router.wasm 2>/dev/null || true
 	@cp packs/fast2flow/pack.yaml dist/
 	@cp -r packs/fast2flow/flows dist/
 	@echo "Pack artifacts written to dist/"
@@ -59,7 +58,6 @@ check:
 ## Clean build artifacts
 clean:
 	cargo clean
-	cd components && cargo clean 2>/dev/null || true
 	rm -rf dist/
 
 ## Bundle indexing (convenience)

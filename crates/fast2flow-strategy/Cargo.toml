@@ -2,8 +2,9 @@
 name = "fast2flow-strategy"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 publish = false
 
 [dependencies]
-fast2flow-contracts = { path = "../fast2flow-contracts" }
+fast2flow-contracts.workspace = true

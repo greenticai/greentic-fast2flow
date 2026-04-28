@@ -86,7 +86,7 @@ If you are new to the project, start with the CLI because it makes the routing b
 
 ## Toolchain
 
-- Rust `1.91.0` (pinned via `rust-toolchain.toml`)
+- Rust `1.95.0` (pinned via `rust-toolchain.toml`)
 
 ## Quickstart
 
@@ -237,7 +237,7 @@ Pack replay validation test:
 - `bash ci/test_gtpack_replay.sh` runs a full `ci/build_gtpack.sh` flow, exports generated pack sources, and asserts:
   - dependency declaration for `routing.ingress.control.chain` with required capability `greentic.cap.ingress.control.v1`
   - normalized component world `greentic:fast2flow/fast2flow-routing`
-  - wizard replay trace file `wizard.finalize.applied.answers.json`
+  - wizard replay trace file `wizard.launcher.applied.answers.json`
   - generated routing-hook schema location
 
 Index/runtime deployment requirements (for either runtime mode):

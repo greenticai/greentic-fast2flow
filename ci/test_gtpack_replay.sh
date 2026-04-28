@@ -32,7 +32,7 @@ rg -q '^- id: fast2flow$' "$pack_yaml"
 rg -q '^  world: greentic:fast2flow/fast2flow-routing$' "$pack_yaml"
 
 # Wizard replay trace should be present in exported source.
-[ -f "$export_dir/wizard.finalize.applied.answers.json" ]
+[ -f "$export_dir/wizard.launcher.applied.answers.json" ]
 
 # Generated schema should be included by the scripted flow.
 [ -f "$export_dir/schemas/routing-hook/fast2flow/config.schema.json" ]
