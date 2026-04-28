@@ -10,7 +10,7 @@ from pathlib import Path
 TOOL_SCHEMA_URL = "https://raw.githubusercontent.com/greentic-biz/customers-tools/main/schemas/tool.schema.json"
 DOC_SCHEMA_URL = "https://raw.githubusercontent.com/greentic-biz/customers-tools/main/schemas/doc.schema.json"
 STORE_SCHEMA_URL = "https://raw.githubusercontent.com/greentic-biz/customers-tools/main/schemas/store.schema.json"
-DOC_ID = "greentic-fast2flow-readme"
+DOC_ID = "greentic-fast2flow-docs"
 TOOL_ID = "greentic-fast2flow"
 TOOL_NAME = "Greentic Fast2Flow"
 TOOL_DESCRIPTION = "Commercial Fast2Flow routing CLI distributed from private GitHub releases."

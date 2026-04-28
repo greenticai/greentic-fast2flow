@@ -90,13 +90,40 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.91.0
+          toolchain: 1.95.0
           components: rustfmt, clippy
+          targets: wasm32-wasip2
       - uses: Swatinem/rust-cache@v2
       - name: Check formatting
         run: cargo fmt --all -- --check
-      - name: Clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - name: Clippy host crates
+        run: >-
+          cargo clippy
+          -p fast2flow-contracts
+          -p fast2flow-core
+          -p fast2flow-strategy
+          -p fast2flow-strategy-phase1
+          -p fast2flow-indexer
+          -p fast2flow-hooks
+          -p fast2flow-llm
+          -p fast2flow-llm-openai
+          -p fast2flow-llm-ollama
+          -p fast2flow-routing-gtpack
+          -p fast2flow-bundle
+          -p greentic-fast2flow
+          --all-targets
+          --all-features
+          --
+          -D warnings
+      - name: Clippy WASM components
+        run: >-
+          cargo clippy
+          -p fast2flow-component-indexer
+          -p fast2flow-component-matcher
+          -p fast2flow-component-router
+          --target wasm32-wasip2
+          --
+          -D warnings
 
   test:
     name: Test
@@ -105,7 +132,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.91.0
+          toolchain: 1.95.0
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
         run: cargo test --workspace --all-features
@@ -117,18 +144,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.91.0
+          toolchain: 1.95.0
           targets: wasm32-wasip2
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: components
       - name: Build WASM components
-        run: cd components && cargo build --target wasm32-wasip2 --release
+        run: cargo build -p fast2flow-component-indexer -p fast2flow-component-matcher -p fast2flow-component-router --target wasm32-wasip2 --release
       - name: Verify WASM artifacts
         run: |
           set -euo pipefail
           for component in indexer matcher router; do
-            wasm="components/target/wasm32-wasip2/release/fast2flow_component_${component}.wasm"
+            wasm="target/wasm32-wasip2/release/fast2flow_component_${component}.wasm"
             if [ ! -f "$wasm" ]; then
               echo "Missing WASM artifact: $wasm" >&2
               exit 1
@@ -144,7 +169,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.91.0
+          toolchain: 1.95.0
       - uses: Swatinem/rust-cache@v2
       - name: Run package/publish dry-run checks
         run: bash ci/publish_dry_run.sh
@@ -192,7 +217,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.91.0
+          toolchain: 1.95.0
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
 
@@ -337,7 +362,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.91.0
+          toolchain: 1.95.0
           targets: wasm32-wasip2
 
       - name: Install cargo-binstall
