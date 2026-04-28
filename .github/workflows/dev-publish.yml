@@ -19,14 +19,77 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: "1.94.0"
+          toolchain: "1.95.0"
           components: rustfmt, clippy
+          targets: wasm32-wasip2
       - uses: Swatinem/rust-cache@v2
       - name: fmt
         run: cargo fmt --all -- --check
-      - name: clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
-      - name: build
-        run: cargo build --workspace --all-features
-      - name: test
-        run: cargo test --workspace --all-features
+      - name: clippy host crates
+        run: >-
+          cargo clippy
+          -p fast2flow-contracts
+          -p fast2flow-core
+          -p fast2flow-strategy
+          -p fast2flow-strategy-phase1
+          -p fast2flow-indexer
+          -p fast2flow-hooks
+          -p fast2flow-llm
+          -p fast2flow-llm-openai
+          -p fast2flow-llm-ollama
+          -p fast2flow-routing-gtpack
+          -p fast2flow-bundle
+          -p greentic-fast2flow
+          --all-targets
+          --all-features
+          --
+          -D warnings
+      - name: clippy WASM components
+        run: >-
+          cargo clippy
+          -p fast2flow-component-indexer
+          -p fast2flow-component-matcher
+          -p fast2flow-component-router
+          --target wasm32-wasip2
+          --
+          -D warnings
+      - name: build host crates
+        run: >-
+          cargo build
+          -p fast2flow-contracts
+          -p fast2flow-core
+          -p fast2flow-strategy
+          -p fast2flow-strategy-phase1
+          -p fast2flow-indexer
+          -p fast2flow-hooks
+          -p fast2flow-llm
+          -p fast2flow-llm-openai
+          -p fast2flow-llm-ollama
+          -p fast2flow-routing-gtpack
+          -p fast2flow-bundle
+          -p greentic-fast2flow
+          --all-features
+      - name: build WASM components
+        run: >-
+          cargo build
+          -p fast2flow-component-indexer
+          -p fast2flow-component-matcher
+          -p fast2flow-component-router
+          --target wasm32-wasip2
+          --release
+      - name: test host crates
+        run: >-
+          cargo test
+          -p fast2flow-contracts
+          -p fast2flow-core
+          -p fast2flow-strategy
+          -p fast2flow-strategy-phase1
+          -p fast2flow-indexer
+          -p fast2flow-hooks
+          -p fast2flow-llm
+          -p fast2flow-llm-openai
+          -p fast2flow-llm-ollama
+          -p fast2flow-routing-gtpack
+          -p fast2flow-bundle
+          -p greentic-fast2flow
+          --all-features
