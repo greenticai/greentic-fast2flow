@@ -4,6 +4,25 @@
 
 .PHONY: build wasm pack test lint fmt check clean help
 
+HOST_PACKAGES = \
+	-p fast2flow-contracts \
+	-p fast2flow-core \
+	-p fast2flow-strategy \
+	-p fast2flow-strategy-phase1 \
+	-p fast2flow-indexer \
+	-p fast2flow-hooks \
+	-p fast2flow-llm \
+	-p fast2flow-llm-openai \
+	-p fast2flow-llm-ollama \
+	-p fast2flow-routing-gtpack \
+	-p fast2flow-bundle \
+	-p greentic-fast2flow
+
+COMPONENT_PACKAGES = \
+	-p fast2flow-component-indexer \
+	-p fast2flow-component-matcher \
+	-p fast2flow-component-router
+
 # Default target
 all: build
 
@@ -42,7 +61,8 @@ test:
 ## Run lint checks
 lint:
 	cargo fmt --all -- --check
-	cargo clippy --workspace --all-targets --all-features -- -D warnings
+	cargo clippy $(HOST_PACKAGES) --all-targets --all-features -- -D warnings
+	cargo clippy $(COMPONENT_PACKAGES) --target wasm32-wasip2 -- -D warnings
 
 ## Format code
 fmt:
@@ -51,9 +71,11 @@ fmt:
 ## Full check (format + lint + test + build)
 check:
 	cargo fmt --all -- --check
-	cargo clippy --workspace --all-targets --all-features -- -D warnings
-	cargo test --workspace --all-features
-	cargo build --workspace
+	cargo clippy $(HOST_PACKAGES) --all-targets --all-features -- -D warnings
+	cargo clippy $(COMPONENT_PACKAGES) --target wasm32-wasip2 -- -D warnings
+	cargo test $(HOST_PACKAGES) --all-features
+	cargo build $(HOST_PACKAGES) --all-features
+	cargo build $(COMPONENT_PACKAGES) --target wasm32-wasip2 --release
 
 ## Clean build artifacts
 clean:
