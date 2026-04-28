@@ -2,13 +2,14 @@
 name = "fast2flow-llm-ollama"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 publish = false
 
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
-fast2flow-llm = { path = "../fast2flow-llm" }
+fast2flow-llm.workspace = true
 greentic-secrets-lib.workspace = true
 reqwest.workspace = true
 serde.workspace = true

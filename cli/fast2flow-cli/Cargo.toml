@@ -2,6 +2,7 @@
 name = "greentic-fast2flow"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 publish = false
 autobins = false
@@ -13,15 +14,15 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
-fast2flow-bundle = { path = "../../crates/fast2flow-bundle" }
-fast2flow-contracts = { path = "../../crates/fast2flow-contracts" }
-fast2flow-core = { path = "../../crates/fast2flow-core" }
-fast2flow-hooks = { path = "../../crates/fast2flow-hooks" }
-fast2flow-indexer = { path = "../../crates/fast2flow-indexer" }
-fast2flow-routing-gtpack = { path = "../../crates/fast2flow-routing-gtpack" }
-fast2flow-strategy-phase1 = { path = "../../crates/fast2flow-strategy-phase1" }
+fast2flow-bundle.workspace = true
+fast2flow-contracts.workspace = true
+fast2flow-core.workspace = true
+fast2flow-hooks.workspace = true
+fast2flow-indexer.workspace = true
+fast2flow-routing-gtpack.workspace = true
+fast2flow-strategy-phase1.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
-tempfile = "3"
+tempfile.workspace = true

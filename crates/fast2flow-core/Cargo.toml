@@ -2,18 +2,19 @@
 name = "fast2flow-core"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 publish = false
 
 [dependencies]
-fast2flow-contracts = { path = "../fast2flow-contracts" }
-fast2flow-hooks = { path = "../fast2flow-hooks" }
-fast2flow-llm = { path = "../fast2flow-llm" }
-fast2flow-strategy = { path = "../fast2flow-strategy" }
+fast2flow-contracts.workspace = true
+fast2flow-hooks.workspace = true
+fast2flow-llm.workspace = true
+fast2flow-strategy.workspace = true
 
 [dev-dependencies]
 async-trait.workspace = true
-fast2flow-indexer = { path = "../fast2flow-indexer" }
-fast2flow-strategy-phase1 = { path = "../fast2flow-strategy-phase1" }
+fast2flow-indexer.workspace = true
+fast2flow-strategy-phase1.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
