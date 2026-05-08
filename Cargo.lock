@@ -510,7 +510,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-bundle"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -524,44 +524,44 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-component-indexer"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 dependencies = [
  "greentic-interfaces-guest",
- "greentic-types",
+ "greentic-types 1.1.0-dev.25376259391",
  "serde",
  "serde_json",
 ]
 
 [[package]]
 name = "fast2flow-component-matcher"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 dependencies = [
  "greentic-interfaces-guest",
- "greentic-types",
+ "greentic-types 1.1.0-dev.25376259391",
  "serde",
  "serde_json",
 ]
 
 [[package]]
 name = "fast2flow-component-router"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 dependencies = [
  "greentic-interfaces-guest",
- "greentic-types",
+ "greentic-types 1.1.0-dev.25376259391",
  "serde",
  "serde_json",
 ]
 
 [[package]]
 name = "fast2flow-contracts"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "fast2flow-core"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 dependencies = [
  "async-trait",
  "fast2flow-contracts",
@@ -576,7 +576,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-hooks"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 dependencies = [
  "fast2flow-contracts",
  "regex",
@@ -584,7 +584,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-indexer"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 dependencies = [
  "anyhow",
  "fast2flow-contracts",
@@ -594,7 +594,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-llm"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -604,7 +604,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-llm-ollama"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -618,7 +618,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-llm-openai"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -632,7 +632,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-routing-gtpack"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 dependencies = [
  "anyhow",
  "fast2flow-contracts",
@@ -654,14 +654,14 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-strategy"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 dependencies = [
  "fast2flow-contracts",
 ]
 
 [[package]]
 name = "fast2flow-strategy-phase1"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 dependencies = [
  "fast2flow-contracts",
  "fast2flow-strategy",
@@ -853,7 +853,7 @@ dependencies = [
 
 [[package]]
 name = "greentic-fast2flow"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -871,11 +871,11 @@ dependencies = [
 
 [[package]]
 name = "greentic-interfaces-guest"
-version = "0.5.0"
+version = "1.1.0-dev.25380112032"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6ae2fd6855448749061b052250c54b29ee8388ea6a81087ce07fdbc671e7eb7"
+checksum = "31869558530be66ec330013f12e47514d15b8c987c45f72b814c99864d88b833"
 dependencies = [
- "greentic-types",
+ "greentic-types 1.1.0-dev.25376259391",
  "wit-bindgen 0.57.1",
  "wit-bindgen-core 0.57.1",
  "wit-bindgen-rust 0.57.1",
@@ -883,9 +883,9 @@ dependencies = [
 
 [[package]]
 name = "greentic-secrets-api"
-version = "0.5.0"
+version = "1.1.0-dev.25478204617"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33b05da6497a5b153592dfa6891db30696e152db755ad31344f867f89d8fd61d"
+checksum = "2fd0039a55cf385c2834a5e4cb1c245dfe6374e8e3f60442af191fe11f97532d"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -894,9 +894,9 @@ dependencies = [
 
 [[package]]
 name = "greentic-secrets-core"
-version = "0.5.0"
+version = "1.1.0-dev.25478204617"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "163826dfe0ead6553581d8d09bf74f66479570e7433d005bf1a9b566d9d3de6d"
+checksum = "37f62ca4a043135c9d45c4a25be8d917e7f75d5bf5fe0696ad0c338e12f98faf"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -904,7 +904,7 @@ dependencies = [
  "greentic-secrets-api",
  "greentic-secrets-provider-dev",
  "greentic-secrets-spec",
- "greentic-types",
+ "greentic-types 0.5.2",
  "hkdf",
  "lru",
  "once_cell",
@@ -922,22 +922,22 @@ dependencies = [
 
 [[package]]
 name = "greentic-secrets-lib"
-version = "0.5.0"
+version = "1.1.0-dev.25478204617"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61ae64224552cd7961859c2d04f8a848b268e85dfa0c5e3a3e9c0cbb2656b688"
+checksum = "9f3ced76fbae3cbaf828bcb2a85ab0334b3247a07ad0d6134b58c9ab0868388c"
 dependencies = [
  "async-trait",
  "greentic-secrets-api",
  "greentic-secrets-core",
  "greentic-secrets-spec",
- "greentic-types",
+ "greentic-types 0.5.2",
 ]
 
 [[package]]
 name = "greentic-secrets-provider-dev"
-version = "0.5.0"
+version = "1.1.0-dev.25478204617"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59bab04dae2096f0a19c72e27173b67b1b9a29c5f6ab6662bdf3698f995e39fb"
+checksum = "39ed14c49f8f4d95ffde9e0847e334617552f06358684323c3c0ab9462fdea47"
 dependencies = [
  "async-trait",
  "base64",
@@ -952,12 +952,12 @@ dependencies = [
 
 [[package]]
 name = "greentic-secrets-spec"
-version = "0.5.0"
+version = "1.1.0-dev.25478204617"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d53eae0820853253dc6760c7c7044ec5d97922200e7abc0a57d363432da0993d"
+checksum = "17584de61667605f52bb509a04381aa589bf0a5c0f0796f3bc4c1d4c47aadbdf"
 dependencies = [
  "async-trait",
- "greentic-types",
+ "greentic-types 0.5.2",
  "serde",
  "serde_json",
  "thiserror",
@@ -1009,10 +1009,33 @@ dependencies = [
  "serde_with",
  "sha2",
  "thiserror",
- "time",
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "unic-langid",
+]
+
+[[package]]
+name = "greentic-types"
+version = "1.1.0-dev.25376259391"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20f2d79fd4554b6985d5fd529c88884dec49985c14846bf10b43c9a58ee16e1e"
+dependencies = [
+ "anyhow",
+ "blake3",
+ "chrono",
+ "ciborium",
+ "constant_time_eq",
+ "fnv",
+ "indexmap",
+ "semver",
+ "serde",
+ "serde_bytes",
+ "serde_json",
+ "serde_with",
+ "sha2",
+ "thiserror",
+ "time",
  "unic-langid",
 ]
 
