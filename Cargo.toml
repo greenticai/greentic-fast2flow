@@ -1,28 +1,27 @@
 [workspace]
 resolver = "2"
 members = [
-  # Host crates (edition 2021)
-  "crates/fast2flow-contracts",
-  "crates/fast2flow-core",
-  "crates/fast2flow-strategy",
-  "crates/fast2flow-strategy-phase1",
-  "crates/fast2flow-indexer",
-  "crates/fast2flow-hooks",
-  "crates/fast2flow-llm",
-  "crates/fast2flow-llm-openai",
-  "crates/fast2flow-llm-ollama",
-  "crates/fast2flow-routing-gtpack",
-  "crates/fast2flow-bundle",
-  "cli/fast2flow-cli",
-
-  # WASM components (edition 2024)
-  "components/indexer",
-  "components/matcher",
-  "components/router",
+    "cli/fast2flow-cli",
+    # WASM components (edition 2024)
+    "components/indexer",
+    "components/matcher",
+    "components/router",
+    "crates/fast2flow-bundle",
+    # Host crates (edition 2021)
+    "crates/fast2flow-contracts",
+    "crates/fast2flow-core",
+    "crates/fast2flow-hooks",
+    "crates/fast2flow-indexer",
+    "crates/fast2flow-llm",
+    "crates/fast2flow-llm-ollama",
+    "crates/fast2flow-llm-openai",
+    "crates/fast2flow-routing-gtpack",
+    "crates/fast2flow-strategy",
+    "crates/fast2flow-strategy-phase1",
 ]
 
 [workspace.package]
-version = "0.5.0"
+version = "1.1.0"
 edition = "2021"
 rust-version = "1.95"
 license = "Commercial"
