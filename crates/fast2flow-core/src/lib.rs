@@ -74,7 +74,10 @@ impl CoreRouter {
         debug!(text = %request.envelope.text.trim(), "routing message");
 
         if budget.is_zero() {
-            warn!(reason = "zero_time_budget", "routing → continue (caller passed a zero time budget)");
+            warn!(
+                reason = "zero_time_budget",
+                "routing → continue (caller passed a zero time budget)"
+            );
             return continue_directive();
         }
 
@@ -142,7 +145,10 @@ impl CoreRouter {
                 "best match is below the confidence threshold"
             );
         } else {
-            debug!(candidate_count = candidates.len(), "strategy produced no candidate");
+            debug!(
+                candidate_count = candidates.len(),
+                "strategy produced no candidate"
+            );
         }
 
         if let Some(llm) = &self.llm {
@@ -158,7 +164,10 @@ impl CoreRouter {
             }
             let remaining = budget - elapsed;
             let prompt = llm_prompt(&request.scope, text, &candidates);
-            debug!(remaining_ms = remaining.as_millis() as u64, "invoking LLM fallback");
+            debug!(
+                remaining_ms = remaining.as_millis() as u64,
+                "invoking LLM fallback"
+            );
             match llm.complete(&prompt, remaining).await {
                 Ok(answer) => {
                     if answer.confidence >= self.config.llm_min_confidence {

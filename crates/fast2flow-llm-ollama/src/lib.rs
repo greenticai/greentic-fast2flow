@@ -104,7 +104,10 @@ impl LlmProvider for OllamaProvider {
                 return Err(err);
             }
             Err(_) => {
-                warn!(timeout_ms = timeout.as_millis() as u64, "ollama: request timed out");
+                warn!(
+                    timeout_ms = timeout.as_millis() as u64,
+                    "ollama: request timed out"
+                );
                 return Err(LlmError::Timeout);
             }
         };

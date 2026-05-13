@@ -12,9 +12,13 @@
 use tracing_subscriber::{fmt, EnvFilter};
 
 fn export_target_configured() -> bool {
-    ["TELEMETRY_EXPORT", "OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_ENDPOINT"]
-        .iter()
-        .any(|key| std::env::var_os(key).is_some())
+    [
+        "TELEMETRY_EXPORT",
+        "OTLP_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+    ]
+    .iter()
+    .any(|key| std::env::var_os(key).is_some())
 }
 
 /// Installs the process-wide telemetry subscriber. Safe to call once at startup;
@@ -22,16 +26,18 @@ fn export_target_configured() -> bool {
 /// collector never takes the binary down.
 pub fn init(service_name: &str, default_level: &str) {
     if export_target_configured() {
-        if let Err(err) = greentic_telemetry::init_telemetry_auto(greentic_telemetry::TelemetryConfig {
-            service_name: service_name.to_string(),
-        }) {
+        if let Err(err) =
+            greentic_telemetry::init_telemetry_auto(greentic_telemetry::TelemetryConfig {
+                service_name: service_name.to_string(),
+            })
+        {
             eprintln!("warn: failed to initialize telemetry export: {err}");
         }
         return;
     }
 
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(default_level));
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_level));
     let _ = fmt()
         .with_writer(std::io::stderr)
         .with_target(false)

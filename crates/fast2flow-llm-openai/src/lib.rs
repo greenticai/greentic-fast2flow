@@ -134,7 +134,10 @@ impl LlmProvider for OpenAiProvider {
                 return Err(err);
             }
             Err(_) => {
-                warn!(timeout_ms = timeout.as_millis() as u64, "openai: request timed out");
+                warn!(
+                    timeout_ms = timeout.as_millis() as u64,
+                    "openai: request timed out"
+                );
                 return Err(LlmError::Timeout);
             }
         };
