@@ -1,28 +1,27 @@
 [workspace]
 resolver = "2"
 members = [
-  # Host crates (edition 2021)
-  "crates/fast2flow-contracts",
-  "crates/fast2flow-core",
-  "crates/fast2flow-strategy",
-  "crates/fast2flow-strategy-phase1",
-  "crates/fast2flow-indexer",
-  "crates/fast2flow-hooks",
-  "crates/fast2flow-llm",
-  "crates/fast2flow-llm-openai",
-  "crates/fast2flow-llm-ollama",
-  "crates/fast2flow-routing-gtpack",
-  "crates/fast2flow-bundle",
-  "cli/fast2flow-cli",
-
-  # WASM components (edition 2024)
-  "components/indexer",
-  "components/matcher",
-  "components/router",
+    "cli/fast2flow-cli",
+    # WASM components (edition 2024)
+    "components/indexer",
+    "components/matcher",
+    "components/router",
+    "crates/fast2flow-bundle",
+    # Host crates (edition 2021)
+    "crates/fast2flow-contracts",
+    "crates/fast2flow-core",
+    "crates/fast2flow-hooks",
+    "crates/fast2flow-indexer",
+    "crates/fast2flow-llm",
+    "crates/fast2flow-llm-ollama",
+    "crates/fast2flow-llm-openai",
+    "crates/fast2flow-routing-gtpack",
+    "crates/fast2flow-strategy",
+    "crates/fast2flow-strategy-phase1",
 ]
 
 [workspace.package]
-version = "0.5.0"
+version = "1.1.0"
 edition = "2021"
 rust-version = "1.95"
 license = "Commercial"
@@ -46,6 +45,7 @@ fast2flow-strategy-phase1 = { path = "crates/fast2flow-strategy-phase1" }
 futures = "0.3"
 greentic-interfaces-guest = { version = "0.5", default-features = false, features = ["component-v0-6"] }
 greentic-secrets-lib = "0.5"
+greentic-telemetry = "0.5"
 greentic-types = "0.5"
 regex = "1"
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
@@ -56,6 +56,8 @@ serial_test = "3"
 tempfile = "3"
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "std"] }
 walkdir = "2.5"
 wit-bindgen = "0.57"
 

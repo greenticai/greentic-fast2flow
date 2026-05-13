@@ -48,10 +48,16 @@ impl WitRoutingRuntime for MountedRuntime {
         let scope = request.scope.clone();
         let store = match load_latest(Path::new(indexes_path), &scope) {
             Ok(store) => store,
-            Err(_) => {
+            Err(err) => {
+                tracing::warn!(
+                    scope = %scope,
+                    indexes_path = %indexes_path,
+                    error = %err,
+                    "failed to load mounted index; routing → continue"
+                );
                 return Fast2FlowHookOutV1 {
                     directive: RoutingDirective::Continue,
-                }
+                };
             }
         };
         let lookup = MountedIndexLookup { scope, store };
