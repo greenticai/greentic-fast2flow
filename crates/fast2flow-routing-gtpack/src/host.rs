@@ -9,6 +9,7 @@ use fast2flow_hooks::DefaultHookFilter;
 use fast2flow_llm::LlmProvider;
 use fast2flow_strategy::RoutingStrategy;
 use fast2flow_strategy_phase1::Phase1DeterministicStrategy;
+use tracing::{debug, info, warn};
 
 use crate::config::{build_llm, RouterBootstrapConfig};
 use crate::handle_hook_from_mounts;
@@ -40,8 +41,17 @@ impl HostRuntime {
         if let Some(policy) = policy.as_ref() {
             validate_policy(policy)?;
         }
+        let policy_loaded = policy.is_some();
         let strategy: Arc<dyn RoutingStrategy> = Arc::new(Phase1DeterministicStrategy);
         let llm = build_llm(&config.llm).await?;
+        info!(
+            min_confidence = config.min_confidence,
+            llm_min_confidence = config.llm_min_confidence,
+            candidate_limit = config.candidate_limit,
+            llm_enabled = llm.is_some(),
+            policy_loaded,
+            "fast2flow host runtime booted"
+        );
         Ok(Self {
             strategy,
             llm,
@@ -112,6 +122,20 @@ impl HostRuntime {
 
         let (filter, config, trace) =
             resolve_policy(policy, request, &self.base_filter, &self.base_config);
+        if trace.warnings.is_empty() {
+            debug!(
+                scope = %request.scope,
+                applied = trace.applied.len(),
+                "policy resolved for request"
+            );
+        } else {
+            warn!(
+                scope = %request.scope,
+                applied = trace.applied.len(),
+                warnings = ?trace.warnings,
+                "policy resolution produced warnings"
+            );
+        }
         (filter, config, Some(trace))
     }
 }

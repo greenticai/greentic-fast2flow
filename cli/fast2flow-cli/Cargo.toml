@@ -23,6 +23,7 @@ fast2flow-routing-gtpack.workspace = true
 fast2flow-strategy-phase1.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
