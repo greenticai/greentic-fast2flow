@@ -8,8 +8,9 @@ use fast2flow_contracts::{Fast2FlowHookInV1, FlowDoc, MessageEnvelope, RoutingPo
 use fast2flow_core::{CandidateIndex, CoreRouter, RouterConfig};
 use fast2flow_hooks::DefaultHookFilter;
 use fast2flow_indexer::{build_index, load_latest, IndexStore};
-use fast2flow_routing_gtpack::load_policy_from_path;
+use fast2flow_routing_gtpack::{load_policy_from_path, telemetry};
 use fast2flow_strategy_phase1::Phase1DeterministicStrategy;
+use tracing::{debug, info, info_span, warn};
 
 #[derive(Parser)]
 #[command(name = "greentic-fast2flow")]
@@ -128,12 +129,27 @@ enum BundleCommands {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
-    match cli.command {
+
+    // Logs go to stderr (or OTLP when configured); the JSON results stay on
+    // stdout so the CLI can be piped. `bundle index --verbose` lowers the
+    // default level so its progress lines show; otherwise default to `info`
+    // (the routing decision tree) and `RUST_LOG` overrides everything.
+    let verbose = matches!(
+        &cli.command,
+        Commands::Bundle {
+            command: BundleCommands::Index { verbose: true, .. }
+        }
+    );
+    telemetry::init("greentic-fast2flow", if verbose { "debug" } else { "info" });
+
+    let result = match cli.command {
         Commands::Index { command } => run_index(command),
         Commands::Bundle { command } => run_bundle(command),
         Commands::Route { command } => run_route(command).await,
         Commands::Policy { command } => run_policy(command),
-    }
+    };
+    telemetry::shutdown();
+    result
 }
 
 fn run_index(command: IndexCommands) -> Result<()> {
@@ -144,16 +160,25 @@ fn run_index(command: IndexCommands) -> Result<()> {
             output,
             now_unix_ms,
         } => {
+            let _span = info_span!("fast2flow.cli.index_build", %scope).entered();
             let data = fs::read_to_string(&flows)
                 .with_context(|| format!("failed reading {}", flows.display()))?;
             let docs: Vec<FlowDoc> = serde_json::from_str(&data)
                 .with_context(|| format!("failed parsing {}", flows.display()))?;
+            info!(flows_file = %flows.display(), flows = docs.len(), output = %output.display(), "building index");
             let manifest = build_index(&scope, &docs, &output, now_unix_ms)?;
             println!("{}", serde_json::to_string_pretty(&manifest)?);
             Ok(())
         }
         IndexCommands::Inspect { scope, input } => {
             let store = load_latest(&input, &scope)?;
+            info!(
+                %scope,
+                input = %input.display(),
+                entries = store.manifest().entries.len(),
+                generated_at_ms = store.manifest().generated_at_ms,
+                "inspected index"
+            );
             println!(
                 "scope={} entries={}",
                 store.manifest().scope,
@@ -175,7 +200,7 @@ fn run_bundle(command: BundleCommands) -> Result<()> {
             verbose,
         } => {
             if verbose {
-                eprintln!("Indexing bundle: {}", bundle.display());
+                info!(bundle = %bundle.display(), tenant = %tenant, team = %team, "indexing bundle");
             }
 
             let result = fast2flow_bundle::hooks::index_bundle_after_setup(
@@ -187,15 +212,17 @@ fn run_bundle(command: BundleCommands) -> Result<()> {
             )?;
 
             if result.flow_count == 0 {
-                eprintln!("No flows found in bundle");
+                warn!(bundle = %bundle.display(), "no flows found in bundle");
                 return Ok(());
             }
 
             if verbose {
-                eprintln!("\nIndex summary:");
-                eprintln!("  - Flows indexed: {}", result.flow_count);
-                eprintln!("  - Scope: {}:{}", tenant, team);
-                eprintln!("  - Index key: fast2flow:index:{}:{}", tenant, team);
+                info!(
+                    flow_count = result.flow_count,
+                    scope = %format!("{tenant}:{team}"),
+                    index_key = %format!("fast2flow:index:{tenant}:{team}"),
+                    "bundle index summary"
+                );
             }
 
             if let Some(path) = &result.index_path {
@@ -252,6 +279,7 @@ async fn run_route(command: RouteCommands) -> Result<()> {
                 indexes_path: indexes_path.display().to_string(),
                 now_unix_ms: 0,
             };
+            debug!(text = %request.envelope.text, "route simulate input");
             let output = router.route(request, &lookup).await;
             println!("{}", serde_json::to_string_pretty(&output)?);
             Ok(())

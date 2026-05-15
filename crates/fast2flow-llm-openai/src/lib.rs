@@ -5,6 +5,7 @@ use fast2flow_llm::{LlmError, LlmProvider, LlmResponse};
 use greentic_secrets_lib::{EnvSecretsManager, SecretsManager};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use tracing::{debug, warn};
 
 #[derive(Debug, Clone)]
 pub struct OpenAiProvider {
@@ -104,6 +105,13 @@ impl LlmProvider for OpenAiProvider {
             ],
         };
 
+        debug!(
+            model = %self.model,
+            prompt_len = prompt.len(),
+            timeout_ms = timeout.as_millis() as u64,
+            "openai: requesting completion"
+        );
+
         let send_future = async {
             self.client
                 .post(&self.endpoint)
@@ -119,9 +127,20 @@ impl LlmProvider for OpenAiProvider {
                 .map_err(|err| LlmError::Provider(err.to_string()))
         };
 
-        let payload = tokio::time::timeout(timeout, send_future)
-            .await
-            .map_err(|_| LlmError::Timeout)??;
+        let payload = match tokio::time::timeout(timeout, send_future).await {
+            Ok(Ok(payload)) => payload,
+            Ok(Err(err)) => {
+                warn!(error = %err, "openai: request failed");
+                return Err(err);
+            }
+            Err(_) => {
+                warn!(
+                    timeout_ms = timeout.as_millis() as u64,
+                    "openai: request timed out"
+                );
+                return Err(LlmError::Timeout);
+            }
+        };
 
         let content = payload
             .choices
@@ -131,9 +150,16 @@ impl LlmProvider for OpenAiProvider {
                 LlmError::InvalidJson("missing choices[0].message.content".to_string())
             })?;
 
-        let output = serde_json::from_str::<LlmOutputSchema>(content)
-            .map_err(|err| LlmError::InvalidJson(err.to_string()))?;
+        let output = serde_json::from_str::<LlmOutputSchema>(content).map_err(|err| {
+            warn!(error = %err, "openai: response was not valid routing JSON");
+            LlmError::InvalidJson(err.to_string())
+        })?;
 
+        debug!(
+            target = %output.target,
+            confidence = output.confidence,
+            "openai: completion parsed"
+        );
         Ok(LlmResponse {
             target: output.target,
             confidence: output.confidence,

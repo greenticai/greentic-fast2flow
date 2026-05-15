@@ -1,4 +1,5 @@
 use fast2flow_contracts::{Fast2FlowHookInV1, TextMatchModeV1};
+use tracing::debug;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FilterDecision {
@@ -33,6 +34,7 @@ pub struct RespondRule {
 impl HookFilter for DefaultHookFilter {
     fn evaluate(&self, request: &Fast2FlowHookInV1) -> FilterDecision {
         if request.session_active {
+            debug!(scope = %request.scope, "hook filter: session active → continue");
             return FilterDecision::Continue;
         }
 
@@ -41,6 +43,7 @@ impl HookFilter for DefaultHookFilter {
             .iter()
             .any(|scope| scope.eq_ignore_ascii_case(&request.scope))
         {
+            debug!(scope = %request.scope, "hook filter: scope denied by policy");
             return FilterDecision::Deny("scope denied by policy".to_string());
         }
 
@@ -50,6 +53,7 @@ impl HookFilter for DefaultHookFilter {
             .iter()
             .find(|rule| matches_rule(rule, text))
         {
+            debug!(needle = %rule.needle, mode = ?rule.mode, "hook filter: respond rule matched");
             return FilterDecision::Respond(rule.message.clone());
         }
 
@@ -58,6 +62,7 @@ impl HookFilter for DefaultHookFilter {
                 .iter()
                 .any(|scope| scope.eq_ignore_ascii_case(&request.scope));
             if !allowed {
+                debug!(scope = %request.scope, "hook filter: scope not in allow list → continue");
                 return FilterDecision::Continue;
             }
         }
@@ -68,6 +73,7 @@ impl HookFilter for DefaultHookFilter {
                 .iter()
                 .any(|item| item.eq_ignore_ascii_case(channel))
             {
+                debug!(%channel, "hook filter: channel denied by policy");
                 return FilterDecision::Deny("channel denied by policy".to_string());
             }
             if let Some(allow_channels) = &self.allow_channels {
@@ -75,6 +81,7 @@ impl HookFilter for DefaultHookFilter {
                     .iter()
                     .any(|item| item.eq_ignore_ascii_case(channel));
                 if !allowed {
+                    debug!(%channel, "hook filter: channel not in allow list → continue");
                     return FilterDecision::Continue;
                 }
             }
@@ -86,6 +93,7 @@ impl HookFilter for DefaultHookFilter {
                 .iter()
                 .any(|item| item.eq_ignore_ascii_case(provider))
             {
+                debug!(%provider, "hook filter: provider denied by policy");
                 return FilterDecision::Deny("provider denied by policy".to_string());
             }
             if let Some(allow_providers) = &self.allow_providers {
@@ -93,6 +101,7 @@ impl HookFilter for DefaultHookFilter {
                     .iter()
                     .any(|item| item.eq_ignore_ascii_case(provider));
                 if !allowed {
+                    debug!(%provider, "hook filter: provider not in allow list → continue");
                     return FilterDecision::Continue;
                 }
             }

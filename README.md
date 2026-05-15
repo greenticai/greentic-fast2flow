@@ -1,6 +1,6 @@
 # Fast2Flow
 
-Fast2Flow is a commercial Greentic routing extension that decides which flow should handle an incoming message.
+Fast2Flow is a Greentic routing extension that decides which flow should handle an incoming message.
 
 In plain terms:
 

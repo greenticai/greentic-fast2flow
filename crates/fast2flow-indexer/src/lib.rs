@@ -5,6 +5,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use fast2flow_contracts::{Candidate, FlowDoc, IndexEntryV1, IndexManifestV1};
+use tracing::{debug, info};
 
 #[derive(Debug, Clone)]
 pub struct IndexStore {
@@ -21,7 +22,16 @@ impl IndexStore {
     }
 
     pub fn search(&self, text: &str, limit: usize) -> Vec<Candidate> {
-        search_manifest(&self.manifest, text, limit)
+        let candidates = search_manifest(&self.manifest, text, limit);
+        debug!(
+            scope = %self.manifest.scope,
+            query_len = text.trim().len(),
+            entries = self.manifest.entries.len(),
+            matched = candidates.len(),
+            limit,
+            "index search"
+        );
+        candidates
     }
 }
 
@@ -54,6 +64,13 @@ pub fn build_index(
 ) -> Result<IndexManifestV1> {
     let manifest = build_manifest(scope, flows, now_unix_ms);
     write_manifest(indexes_root, scope, &manifest)?;
+    info!(
+        scope,
+        flows = flows.len(),
+        entries = manifest.entries.len(),
+        root = %indexes_root.display(),
+        "built index manifest"
+    );
     Ok(manifest)
 }
 
@@ -70,6 +87,12 @@ pub fn load_latest(indexes_root: &Path, scope: &str) -> Result<IndexStore> {
         .with_context(|| format!("failed reading {}", manifest_path.display()))?;
     let manifest = serde_json::from_str::<IndexManifestV1>(&payload)
         .with_context(|| format!("failed parsing {}", manifest_path.display()))?;
+    debug!(
+        scope,
+        path = %manifest_path.display(),
+        entries = manifest.entries.len(),
+        "loaded index manifest"
+    );
     Ok(IndexStore::from_manifest(manifest))
 }
 
@@ -95,6 +118,7 @@ fn write_manifest(indexes_root: &Path, scope: &str, manifest: &IndexManifestV1) 
     fs::rename(&latest_tmp, &latest_path)
         .with_context(|| format!("failed atomically updating {}", latest_path.display()))?;
 
+    debug!(path = %final_path.display(), entries = manifest.entries.len(), "wrote index manifest");
     Ok(())
 }
 

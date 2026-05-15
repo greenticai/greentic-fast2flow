@@ -9,3 +9,4 @@ publish = false
 [dependencies]
 fast2flow-contracts.workspace = true
 regex.workspace = true
+tracing.workspace = true

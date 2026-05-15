@@ -10,6 +10,8 @@ use fast2flow_contracts::{
 use fast2flow_core::RouterConfig;
 use fast2flow_hooks::{DefaultHookFilter, RespondRule};
 
+use tracing::info;
+
 use crate::config::env_var;
 use crate::{DEFAULT_POLICY_PATH, ENV_POLICY_PATH};
 
@@ -22,6 +24,14 @@ pub fn load_policy_from_path(path: &Path) -> Result<Option<RoutingPolicyV1>> {
     let policy = serde_json::from_str::<RoutingPolicyV1>(&payload)
         .with_context(|| format!("failed parsing {}", path.display()))?;
     validate_policy(&policy).with_context(|| format!("invalid policy in {}", path.display()))?;
+    info!(
+        path = %path.display(),
+        stage_order = policy.stage_order.len(),
+        scope_overrides = policy.scope_overrides.len(),
+        channel_overrides = policy.channel_overrides.len(),
+        provider_overrides = policy.provider_overrides.len(),
+        "loaded routing policy"
+    );
     Ok(Some(policy))
 }
 

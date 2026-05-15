@@ -5,6 +5,7 @@ use fast2flow_llm::{LlmError, LlmProvider, LlmResponse};
 use greentic_secrets_lib::{EnvSecretsManager, SecretsManager};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use tracing::{debug, warn};
 
 #[derive(Debug, Clone)]
 pub struct OllamaProvider {
@@ -74,6 +75,14 @@ impl LlmProvider for OllamaProvider {
             stream: false,
         };
 
+        debug!(
+            model = %self.model,
+            endpoint = %self.endpoint,
+            prompt_len = prompt.len(),
+            timeout_ms = timeout.as_millis() as u64,
+            "ollama: requesting completion"
+        );
+
         let send_future = async {
             self.client
                 .post(&self.endpoint)
@@ -88,13 +97,31 @@ impl LlmProvider for OllamaProvider {
                 .map_err(|err| LlmError::Provider(err.to_string()))
         };
 
-        let payload = tokio::time::timeout(timeout, send_future)
-            .await
-            .map_err(|_| LlmError::Timeout)??;
+        let payload = match tokio::time::timeout(timeout, send_future).await {
+            Ok(Ok(payload)) => payload,
+            Ok(Err(err)) => {
+                warn!(error = %err, "ollama: request failed");
+                return Err(err);
+            }
+            Err(_) => {
+                warn!(
+                    timeout_ms = timeout.as_millis() as u64,
+                    "ollama: request timed out"
+                );
+                return Err(LlmError::Timeout);
+            }
+        };
 
-        let output = serde_json::from_str::<LlmOutputSchema>(&payload.response)
-            .map_err(|err| LlmError::InvalidJson(err.to_string()))?;
+        let output = serde_json::from_str::<LlmOutputSchema>(&payload.response).map_err(|err| {
+            warn!(error = %err, "ollama: response was not valid routing JSON");
+            LlmError::InvalidJson(err.to_string())
+        })?;
 
+        debug!(
+            target = %output.target,
+            confidence = output.confidence,
+            "ollama: completion parsed"
+        );
         Ok(LlmResponse {
             target: output.target,
             confidence: output.confidence,

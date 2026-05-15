@@ -3,6 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
+use tracing::{debug, info, warn};
 use walkdir::WalkDir;
 
 use crate::parser::{parse_flow_file, FlowEntry};
@@ -25,7 +26,7 @@ pub fn scan_bundle(bundle_path: &Path) -> Result<Vec<FlowEntry>> {
         match parse_flow_file(flow_path, pack_id) {
             Ok(entry) => entries.push(entry),
             Err(e) => {
-                eprintln!("Warning: Failed to parse {}: {}", flow_path.display(), e);
+                warn!(path = %flow_path.display(), error = %e, "failed to parse flow file");
             }
         }
     }
@@ -45,13 +46,13 @@ pub fn scan_bundle(bundle_path: &Path) -> Result<Vec<FlowEntry>> {
 /// A vector of successfully parsed flow entries.
 pub fn scan_bundle_verbose(bundle_path: &Path, verbose: bool) -> Result<Vec<FlowEntry>> {
     if verbose {
-        eprintln!("Scanning bundle: {}", bundle_path.display());
+        info!(bundle = %bundle_path.display(), "scanning bundle");
     }
 
     let flow_files = find_flow_files(bundle_path)?;
 
     if verbose {
-        eprintln!("Found {} flow files", flow_files.len());
+        info!(count = flow_files.len(), "found flow files");
     }
 
     let mut entries = Vec::new();
@@ -60,15 +61,17 @@ pub fn scan_bundle_verbose(bundle_path: &Path, verbose: bool) -> Result<Vec<Flow
         match parse_flow_file(flow_path, pack_id) {
             Ok(entry) => {
                 if verbose {
-                    eprintln!(
-                        "  - {} / {} ({})",
-                        entry.pack_id, entry.flow_id, entry.title
+                    debug!(
+                        pack_id = %entry.pack_id,
+                        flow_id = %entry.flow_id,
+                        title = %entry.title,
+                        "parsed flow"
                     );
                 }
                 entries.push(entry);
             }
             Err(e) => {
-                eprintln!("Warning: Failed to parse {}: {}", flow_path.display(), e);
+                warn!(path = %flow_path.display(), error = %e, "failed to parse flow file");
             }
         }
     }

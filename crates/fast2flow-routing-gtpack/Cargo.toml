@@ -26,12 +26,15 @@ fast2flow-strategy-phase1.workspace = true
 futures.workspace = true
 regex.workspace = true
 serde_json.workspace = true
+tracing.workspace = true
 wit-bindgen.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 fast2flow-llm-ollama.workspace = true
 fast2flow-llm-openai.workspace = true
+greentic-telemetry.workspace = true
 tokio.workspace = true
+tracing-subscriber.workspace = true
 
 [dev-dependencies]
 serial_test.workspace = true
