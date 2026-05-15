@@ -10,6 +10,9 @@ mod config;
 mod host;
 mod policy;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod telemetry;
+
 pub use config::{
     build_router_from_config, build_router_from_env, LlmRuntimeConfig, RouterBootstrapConfig,
 };
@@ -50,7 +53,13 @@ pub async fn handle_hook_from_mounts(
 
     let lookup = match MountedIndexLookup::load(indexes_path, &request.scope) {
         Ok(lookup) => lookup,
-        Err(_) => {
+        Err(err) => {
+            tracing::warn!(
+                scope = %request.scope,
+                indexes_path = %indexes_path,
+                error = %err,
+                "failed to load mounted index; routing → continue"
+            );
             return Fast2FlowHookOutV1 {
                 directive: RoutingDirective::Continue,
             };

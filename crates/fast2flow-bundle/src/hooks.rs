@@ -6,6 +6,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
+use tracing::{info, warn};
 
 use crate::index::{build_index_manifest, generate_intents_md, IndexManifest};
 use crate::scanner::scan_bundle_verbose;
@@ -94,9 +95,7 @@ fn index_bundle_internal(
     let entries = scan_bundle_verbose(bundle_path, verbose)?;
 
     if entries.is_empty() {
-        if verbose {
-            eprintln!("No flows found in bundle");
-        }
+        warn!(bundle = %bundle_path.display(), scope = %format!("{tenant}:{team}"), "no flows found in bundle");
         return Ok(IndexResult {
             manifest: build_index_manifest(&[], tenant, team),
             index_path: None,
@@ -124,7 +123,7 @@ fn index_bundle_internal(
         .with_context(|| format!("Failed to write {}", index_path.display()))?;
 
     if verbose {
-        eprintln!("Wrote index: {}", index_path.display());
+        info!(path = %index_path.display(), "wrote index");
     }
 
     // Generate intents.md if requested
@@ -135,7 +134,7 @@ fn index_bundle_internal(
             .with_context(|| format!("Failed to write {}", path.display()))?;
 
         if verbose {
-            eprintln!("Wrote intents: {}", path.display());
+            info!(path = %path.display(), "wrote intents");
         }
 
         Some(path)
@@ -145,12 +144,13 @@ fn index_bundle_internal(
 
     let flow_count = entries.len();
 
-    if verbose {
-        eprintln!("\nIndex summary:");
-        eprintln!("  - Flows indexed: {}", flow_count);
-        eprintln!("  - Scope: {}:{}", tenant, team);
-        eprintln!("  - Index key: fast2flow:index:{}:{}", tenant, team);
-    }
+    info!(
+        flow_count,
+        scope = %format!("{tenant}:{team}"),
+        index_key = %format!("fast2flow:index:{tenant}:{team}"),
+        index_path = %index_path.display(),
+        "bundle indexed"
+    );
 
     Ok(IndexResult {
         manifest,
