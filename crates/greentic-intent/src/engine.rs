@@ -52,12 +52,14 @@ impl IntentEngineBuilder {
         self
     }
 
-    /// Register the built-in locale bundles (Phase A: en-GB only).
-    /// Available only with the `builtin-locales` feature.
+    /// Register every built-in locale bundle (en-GB, en-US, fr-FR,
+    /// es-ES, nl-NL, de-DE). Available only with the `builtin-locales`
+    /// feature.
     #[cfg(feature = "builtin-locales")]
     pub fn with_builtin_locales(mut self) -> Self {
-        let en_gb = crate::builtin::en_gb_bundle();
-        self.resources.locales.insert(en_gb.locale.clone(), en_gb);
+        for bundle in crate::builtin::all_builtin_locales() {
+            self.resources.locales.insert(bundle.locale.clone(), bundle);
+        }
         self
     }
 

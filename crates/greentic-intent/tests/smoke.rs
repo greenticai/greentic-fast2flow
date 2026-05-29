@@ -132,3 +132,120 @@ fn engine_resolves_from_and_to_roles_for_multi_word_cities() {
         "flight from {{location:from}} to {{location:to}}"
     );
 }
+
+#[cfg(all(feature = "builtin-locales", feature = "builtin-gazetteer"))]
+mod multilingual {
+    use super::*;
+    use chrono::{TimeZone, Utc};
+
+    fn ctx_for(locale: &str, tz: &str) -> IntentContext {
+        IntentContext {
+            // 2026-05-27 is a Wednesday → tomorrow == 2026-05-28 == "20260528".
+            reference_time: Utc.with_ymd_and_hms(2026, 5, 27, 12, 0, 0).unwrap(),
+            timezone: tz.into(),
+            preferred_locale: Some(locale.into()),
+            tenant_locale: None,
+            user_locale: None,
+            allowed_languages: vec![locale.split('-').next().unwrap_or("en").into()],
+        }
+    }
+
+    fn engine() -> IntentEngine {
+        IntentEngine::builder()
+            .with_builtin_locales()
+            .with_builtin_gazetteer()
+            .with_default_extractors()
+            .build()
+    }
+
+    #[test]
+    fn french_weather_query_marks_location_and_date() {
+        let result = engine().mark(
+            "quel temps fera-t-il à Paris demain ?",
+            &ctx_for("fr-FR", "Europe/Paris"),
+        );
+        assert_eq!(result.entities.len(), 2);
+        let date = result
+            .entities
+            .iter()
+            .find(|e| e.kind == EntityKind::Date)
+            .expect("date");
+        assert_eq!(date.normalized, "20260528");
+        // `à` maps to `In` per the locale bundle.
+        let paris = result
+            .entities
+            .iter()
+            .find(|e| e.kind == EntityKind::Location)
+            .expect("location");
+        assert_eq!(paris.normalized, "Paris");
+        assert_eq!(paris.role.as_deref(), Some("in"));
+    }
+
+    #[test]
+    fn spanish_flight_query_resolves_from_and_to() {
+        let result = engine().mark(
+            "resérvame un vuelo de Londres a París mañana",
+            &ctx_for("es-ES", "Europe/Madrid"),
+        );
+        assert_eq!(result.entities.len(), 3);
+        let by_role: std::collections::HashMap<Option<&str>, &str> = result
+            .entities
+            .iter()
+            .filter(|e| e.kind == EntityKind::Location)
+            .map(|e| (e.role.as_deref(), e.normalized.as_str()))
+            .collect();
+        assert_eq!(by_role.get(&Some("from")).copied(), Some("London"));
+        assert_eq!(by_role.get(&Some("to")).copied(), Some("Paris"));
+        let date = result
+            .entities
+            .iter()
+            .find(|e| e.kind == EntityKind::Date)
+            .expect("date");
+        assert_eq!(date.normalized, "20260528");
+    }
+
+    #[test]
+    fn dutch_flight_query_resolves_from_and_to() {
+        let result = engine().mark(
+            "boek een vlucht van Londen naar Parijs morgen",
+            &ctx_for("nl-NL", "Europe/Amsterdam"),
+        );
+        assert_eq!(result.entities.len(), 3);
+        let by_role: std::collections::HashMap<Option<&str>, &str> = result
+            .entities
+            .iter()
+            .filter(|e| e.kind == EntityKind::Location)
+            .map(|e| (e.role.as_deref(), e.normalized.as_str()))
+            .collect();
+        assert_eq!(by_role.get(&Some("from")).copied(), Some("London"));
+        assert_eq!(by_role.get(&Some("to")).copied(), Some("Paris"));
+        let date = result
+            .entities
+            .iter()
+            .find(|e| e.kind == EntityKind::Date)
+            .expect("date");
+        assert_eq!(date.normalized, "20260528");
+    }
+
+    #[test]
+    fn german_weather_query_resolves_location_and_date() {
+        let result = engine().mark(
+            "wie wird das Wetter morgen in Berlin?",
+            &ctx_for("de-DE", "Europe/Berlin"),
+        );
+        assert_eq!(result.entities.len(), 2);
+        let berlin = result
+            .entities
+            .iter()
+            .find(|e| e.kind == EntityKind::Location)
+            .expect("location");
+        assert_eq!(berlin.normalized, "Berlin");
+        assert_eq!(berlin.role.as_deref(), Some("in"));
+        let date = result
+            .entities
+            .iter()
+            .find(|e| e.kind == EntityKind::Date)
+            .expect("date");
+        assert_eq!(date.normalized, "20260528");
+    }
+}
