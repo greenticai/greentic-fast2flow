@@ -61,6 +61,15 @@ impl IntentEngineBuilder {
         self
     }
 
+    /// Register the built-in gazetteer (small set of well-known cities
+    /// and countries). Stacks with any caller-supplied entries. Available
+    /// only with the `builtin-gazetteer` feature.
+    #[cfg(feature = "builtin-gazetteer")]
+    pub fn with_builtin_gazetteer(mut self) -> Self {
+        crate::builtin::populate_gazetteer(&mut self.resources.gazetteer);
+        self
+    }
+
     /// Register the default extractor set (date + location). Each
     /// extractor relies on resources populated separately
     /// (`with_builtin_locales()`, `with_builtin_gazetteer()`).

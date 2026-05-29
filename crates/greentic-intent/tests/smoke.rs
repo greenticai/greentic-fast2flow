@@ -2,7 +2,7 @@
 
 use greentic_intent::extractors::date::DateExtractor;
 use greentic_intent::extractors::location::LocationExtractor;
-use greentic_intent::{IntentContext, IntentEngine};
+use greentic_intent::{EntityKind, IntentContext, IntentEngine};
 
 #[test]
 fn engine_with_extractors_but_no_locale_resources_returns_text_unchanged() {
@@ -64,4 +64,71 @@ fn engine_with_builtin_en_gb_extracts_relative_dates_and_marks_them() {
     // Debug rendering carries the normalized values.
     assert!(result.marked_text_debug.contains("{{date: 20260528}}"));
     assert!(result.marked_text_debug.contains("{{date: 20260608}}"));
+}
+
+#[cfg(all(feature = "builtin-locales", feature = "builtin-gazetteer"))]
+#[test]
+fn engine_with_builtin_resources_extracts_location_and_date_together() {
+    use chrono::{TimeZone, Utc};
+
+    let engine = IntentEngine::builder()
+        .with_builtin_locales()
+        .with_builtin_gazetteer()
+        .with_default_extractors()
+        .build();
+    let ctx = IntentContext {
+        reference_time: Utc.with_ymd_and_hms(2026, 5, 27, 12, 0, 0).unwrap(),
+        timezone: "Europe/London".into(),
+        preferred_locale: Some("en-GB".into()),
+        tenant_locale: None,
+        user_locale: None,
+        allowed_languages: vec!["en".into()],
+    };
+
+    let result = engine.mark("what is the weather in London tomorrow?", &ctx);
+
+    assert_eq!(result.entities.len(), 2);
+
+    let london = result
+        .entities
+        .iter()
+        .find(|e| e.kind == EntityKind::Location)
+        .expect("london entity");
+    assert_eq!(london.normalized, "London");
+    assert_eq!(london.role.as_deref(), Some("in"));
+
+    let tomorrow = result
+        .entities
+        .iter()
+        .find(|e| e.kind == EntityKind::Date)
+        .expect("date entity");
+    assert_eq!(tomorrow.normalized, "20260528");
+
+    // Type-only markers replace both spans, role-aware adds the preposition.
+    assert_eq!(
+        result.marked_text,
+        "what is the weather in {{location}} {{date}}?"
+    );
+    assert!(result.marked_text_roles.contains("{{location:in}}"));
+    assert!(result.marked_text_debug.contains("{{location: London}}"));
+    assert!(result.marked_text_debug.contains("{{date: 20260528}}"));
+}
+
+#[cfg(all(feature = "builtin-locales", feature = "builtin-gazetteer"))]
+#[test]
+fn engine_resolves_from_and_to_roles_for_multi_word_cities() {
+    let engine = IntentEngine::builder()
+        .with_builtin_locales()
+        .with_builtin_gazetteer()
+        .with_default_extractors()
+        .build();
+    let ctx = IntentContext::now_utc("Europe/London");
+
+    let result = engine.mark("flight from London to New York", &ctx);
+
+    assert_eq!(result.entities.len(), 2);
+    assert_eq!(
+        result.marked_text_roles,
+        "flight from {{location:from}} to {{location:to}}"
+    );
 }

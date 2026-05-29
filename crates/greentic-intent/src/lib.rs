@@ -6,7 +6,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations)]
 
-#[cfg(feature = "builtin-locales")]
+#[cfg(any(feature = "builtin-locales", feature = "builtin-gazetteer"))]
 pub mod builtin;
 pub mod context;
 pub mod engine;
