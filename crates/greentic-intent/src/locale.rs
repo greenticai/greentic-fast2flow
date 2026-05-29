@@ -41,6 +41,9 @@ pub struct LocaleBundle {
     pub modifiers: std::collections::HashMap<String, RelativeModifier>,
     /// `in=In`, `à=In`, `from=From`, `to=To`, …
     pub location_prepositions: std::collections::HashMap<String, LocationRole>,
+    /// Named time words → `(hour, minute)` in 24-hour form.
+    /// e.g. `noon=(12,0)`, `midnight=(0,0)`, `midi=(12,0)`.
+    pub time_words: std::collections::HashMap<String, (u8, u8)>,
 }
 
 /// Locale-neutral modifier classification.

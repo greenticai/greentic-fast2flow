@@ -3,6 +3,7 @@
 
 pub mod date;
 pub mod location;
+pub mod time;
 
 use crate::context::IntentContext;
 use crate::entity::{EntityEvidence, EntityKind};

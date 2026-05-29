@@ -68,6 +68,11 @@ pub fn en_gb_bundle() -> crate::locale::LocaleBundle {
             ("near".into(), LocationRole::Near),
             ("around".into(), LocationRole::Around),
         ]),
+        time_words: HashMap::from([
+            ("noon".into(), (12u8, 0u8)),
+            ("midday".into(), (12u8, 0u8)),
+            ("midnight".into(), (0u8, 0u8)),
+        ]),
     }
 }
 
@@ -126,6 +131,7 @@ pub fn fr_fr_bundle() -> crate::locale::LocaleBundle {
             ("depuis".into(), LocationRole::From),
             ("vers".into(), LocationRole::To),
         ]),
+        time_words: HashMap::from([("midi".into(), (12u8, 0u8)), ("minuit".into(), (0u8, 0u8))]),
     }
 }
 
@@ -174,6 +180,11 @@ pub fn es_es_bundle() -> crate::locale::LocaleBundle {
             ("hacia".into(), LocationRole::To),
             ("cerca".into(), LocationRole::Near),
         ]),
+        time_words: HashMap::from([
+            ("mediodía".into(), (12u8, 0u8)),
+            ("mediodia".into(), (12u8, 0u8)),
+            ("medianoche".into(), (0u8, 0u8)),
+        ]),
     }
 }
 
@@ -221,6 +232,7 @@ pub fn nl_nl_bundle() -> crate::locale::LocaleBundle {
             ("vanuit".into(), LocationRole::From),
             ("bij".into(), LocationRole::Near),
         ]),
+        time_words: HashMap::from([("middernacht".into(), (0u8, 0u8))]),
     }
 }
 
@@ -280,6 +292,10 @@ pub fn de_de_bundle() -> crate::locale::LocaleBundle {
             ("nach".into(), LocationRole::To),
             ("nahe".into(), LocationRole::Near),
             ("bei".into(), LocationRole::Near),
+        ]),
+        time_words: HashMap::from([
+            ("mittag".into(), (12u8, 0u8)),
+            ("mitternacht".into(), (0u8, 0u8)),
         ]),
     }
 }

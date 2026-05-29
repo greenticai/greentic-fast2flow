@@ -116,6 +116,58 @@ fn engine_with_builtin_resources_extracts_location_and_date_together() {
 
 #[cfg(all(feature = "builtin-locales", feature = "builtin-gazetteer"))]
 #[test]
+fn engine_extracts_date_time_and_location_together() {
+    use chrono::{TimeZone, Utc};
+
+    let engine = IntentEngine::builder()
+        .with_builtin_locales()
+        .with_builtin_gazetteer()
+        .with_default_extractors()
+        .build();
+    let ctx = IntentContext {
+        reference_time: Utc.with_ymd_and_hms(2026, 5, 27, 12, 0, 0).unwrap(),
+        timezone: "Europe/London".into(),
+        preferred_locale: Some("en-GB".into()),
+        tenant_locale: None,
+        user_locale: None,
+        allowed_languages: vec!["en".into()],
+    };
+
+    let result = engine.mark("ship it tomorrow at 3pm in London", &ctx);
+
+    assert_eq!(result.entities.len(), 3);
+
+    let date = result
+        .entities
+        .iter()
+        .find(|e| e.kind == EntityKind::Date)
+        .expect("date entity");
+    assert_eq!(date.normalized, "20260528");
+
+    let time = result
+        .entities
+        .iter()
+        .find(|e| e.kind == EntityKind::Time)
+        .expect("time entity");
+    assert_eq!(time.normalized, "15:00");
+
+    let london = result
+        .entities
+        .iter()
+        .find(|e| e.kind == EntityKind::Location)
+        .expect("location entity");
+    assert_eq!(london.normalized, "London");
+    assert_eq!(london.role.as_deref(), Some("in"));
+
+    assert_eq!(
+        result.marked_text,
+        "ship it {{date}} at {{time}} in {{location}}"
+    );
+    assert!(result.marked_text_debug.contains("{{time: 15:00}}"));
+}
+
+#[cfg(all(feature = "builtin-locales", feature = "builtin-gazetteer"))]
+#[test]
 fn engine_resolves_from_and_to_roles_for_multi_word_cities() {
     let engine = IntentEngine::builder()
         .with_builtin_locales()

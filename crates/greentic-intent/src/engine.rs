@@ -72,11 +72,12 @@ impl IntentEngineBuilder {
         self
     }
 
-    /// Register the default extractor set (date + location). Each
+    /// Register the default extractor set (date, time, location). Each
     /// extractor relies on resources populated separately
     /// (`with_builtin_locales()`, `with_builtin_gazetteer()`).
     pub fn with_default_extractors(self) -> Self {
         self.with_extractor(crate::extractors::date::DateExtractor)
+            .with_extractor(crate::extractors::time::TimeExtractor)
             .with_extractor(crate::extractors::location::LocationExtractor)
     }
 
