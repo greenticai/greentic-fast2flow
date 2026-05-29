@@ -12,3 +12,7 @@ fast2flow-contracts.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
+
+[dev-dependencies]
+greentic-intent = { path = "../greentic-intent", features = ["builtin-gazetteer"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }

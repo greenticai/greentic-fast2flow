@@ -33,6 +33,8 @@ wit-bindgen.workspace = true
 fast2flow-llm-ollama.workspace = true
 fast2flow-llm-openai.workspace = true
 greentic-telemetry.workspace = true
+greentic-intent = { path = "../greentic-intent", features = ["builtin-locales", "builtin-gazetteer"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 tokio.workspace = true
 tracing-subscriber.workspace = true
 
