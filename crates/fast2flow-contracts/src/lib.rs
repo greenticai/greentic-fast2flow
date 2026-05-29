@@ -67,6 +67,12 @@ pub struct RoutingEntity {
     /// (`"in"`/`"from"`/`"to"`/… for locations).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub role: Option<String>,
+    /// Alternate serializations indexed by a stable format name.
+    /// Date entities populate `"iso"` with the dashed form. Other
+    /// kinds can add `"display"`, `"12h"`, `"e164"`, etc. without any
+    /// runtime change — consumers fan them out generically.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub formats: std::collections::BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

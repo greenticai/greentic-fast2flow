@@ -142,10 +142,15 @@ impl HostRuntime {
         result
             .entities
             .into_iter()
-            .map(|e| RoutingEntity {
-                kind: e.kind.marker_name().to_string(),
-                normalized: e.normalized,
-                role: e.role,
+            .map(|e| {
+                let kind = e.kind.marker_name().to_string();
+                let formats = entity_formats(&kind, &e.normalized);
+                RoutingEntity {
+                    kind,
+                    normalized: e.normalized,
+                    role: e.role,
+                    formats,
+                }
             })
             .collect()
     }
@@ -193,6 +198,27 @@ impl HostRuntime {
         }
         (filter, config, Some(trace))
     }
+}
+
+/// Compute alternate serializations for a given entity kind. Returns
+/// an empty map when no extra formats are useful — the consumer can
+/// always fall back to the canonical `normalized` value.
+fn entity_formats(kind: &str, normalized: &str) -> std::collections::BTreeMap<String, String> {
+    let mut formats = std::collections::BTreeMap::new();
+    if kind == "date" && normalized.len() == 8 && normalized.bytes().all(|b| b.is_ascii_digit()) {
+        // `YYYYMMDD` → `YYYY-MM-DD`. Adaptive `Input.Date`, ISO 8601
+        // and most date pickers expect the dashed form.
+        formats.insert(
+            "iso".to_string(),
+            format!(
+                "{}-{}-{}",
+                &normalized[..4],
+                &normalized[4..6],
+                &normalized[6..]
+            ),
+        );
+    }
+    formats
 }
 
 /// Inject the intent-extracted entities into a Dispatch directive.
