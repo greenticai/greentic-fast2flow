@@ -509,6 +509,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "fast2flow-contracts",
+ "fast2flow-indexer",
  "serde",
  "serde_json",
  "serde_yaml_gtc",
@@ -552,6 +553,7 @@ name = "fast2flow-contracts"
 version = "1.1.0-dev.0"
 dependencies = [
  "serde",
+ "serde_json",
 ]
 
 [[package]]

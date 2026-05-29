@@ -181,6 +181,7 @@ fn request(scope: &str, text: &str, session_active: bool, budget_ms: u64) -> Fas
         registry_path: "/mnt/registry/latest.json".to_string(),
         indexes_path: "/mnt/indexes".to_string(),
         now_unix_ms: 0,
+        messaging_endpoint_id: None,
     }
 }
 

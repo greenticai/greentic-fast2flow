@@ -1,4 +1,3 @@
-use std::path::Path;
 use std::sync::Arc;
 use std::sync::OnceLock;
 
@@ -6,7 +5,6 @@ use fast2flow_contracts::{
     Fast2FlowHookInV1, Fast2FlowHookOutV1, MessageEnvelope, RoutingDirective,
 };
 use fast2flow_core::CoreRouter;
-use fast2flow_indexer::load_latest;
 use futures::executor::block_on;
 
 use super::generated_bindings::exports::greentic::fast2flow::routing_hook::Guest;
@@ -14,7 +12,7 @@ use super::generated_bindings::greentic::fast2flow::routing_types::{
     Fast2flowHookInV1 as WitIn, Fast2flowHookOutV1 as WitOut, MessageEnvelope as WitEnvelope,
     RoutingDirective as WitDirective,
 };
-use super::{MountedIndexLookup, INDEXES_MOUNT};
+use super::handle_hook_from_mounts;
 
 pub trait WitRoutingRuntime: Send + Sync {
     fn route(&self, request: Fast2FlowHookInV1) -> Fast2FlowHookOutV1;
@@ -40,28 +38,10 @@ impl MountedRuntime {
 
 impl WitRoutingRuntime for MountedRuntime {
     fn route(&self, request: Fast2FlowHookInV1) -> Fast2FlowHookOutV1 {
-        let indexes_path = if request.indexes_path.is_empty() {
-            INDEXES_MOUNT
-        } else {
-            request.indexes_path.as_str()
-        };
-        let scope = request.scope.clone();
-        let store = match load_latest(Path::new(indexes_path), &scope) {
-            Ok(store) => store,
-            Err(err) => {
-                tracing::warn!(
-                    scope = %scope,
-                    indexes_path = %indexes_path,
-                    error = %err,
-                    "failed to load mounted index; routing → continue"
-                );
-                return Fast2FlowHookOutV1 {
-                    directive: RoutingDirective::Continue,
-                };
-            }
-        };
-        let lookup = MountedIndexLookup { scope, store };
-        block_on(self.router.route(request, &lookup))
+        // F3 fix: delegate to the shared async path so scope canonicalization
+        // + mount lookup match the host runtime exactly. The Guest trait is
+        // sync, so we hop through `block_on`.
+        block_on(handle_hook_from_mounts(&self.router, request))
     }
 }
 
@@ -105,6 +85,7 @@ fn map_in(request: WitIn) -> Fast2FlowHookInV1 {
         registry_path: request.registry_path,
         indexes_path: request.indexes_path,
         now_unix_ms: request.now_unix_ms,
+        messaging_endpoint_id: request.messaging_endpoint_id,
     }
 }
 

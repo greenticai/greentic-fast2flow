@@ -16,6 +16,9 @@ interface routing-types {
     registry-path: string,
     indexes-path: string,
     now-unix-ms: u64,
+    // Phase M1: per-endpoint scoping. When set, the routing layer derives
+    // the effective index scope as `endpoint:{id}`; `scope` is ignored.
+    messaging-endpoint-id: option<string>,
   }
 
   variant routing-directive {

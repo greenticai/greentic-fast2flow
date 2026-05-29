@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -17,6 +19,39 @@ pub struct Fast2FlowHookInV1 {
     pub registry_path: String,
     pub indexes_path: String,
     pub now_unix_ms: u64,
+    /// Phase M1: per-endpoint scoping. When set, the routing layer derives the
+    /// effective index scope as [`endpoint_scope`] of this id and ignores
+    /// `scope`. When absent, `scope` is used verbatim (legacy `tenant:team`
+    /// callers stay working).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub messaging_endpoint_id: Option<String>,
+}
+
+impl Fast2FlowHookInV1 {
+    /// Phase M1: per-endpoint scope key.
+    ///
+    /// Returns `endpoint:{messaging_endpoint_id}` when the new field is set,
+    /// otherwise borrows `scope`. The scope string is consumed by
+    /// `MountedIndexLookup` (for index file resolution + match guard) and by
+    /// `RoutingPolicyV1::scope_overrides`; both treat it as an opaque key.
+    ///
+    /// `Cow` keeps the legacy `tenant:team` path allocation-free — the hot
+    /// `canonicalize_scope` call on every request only takes ownership when
+    /// it actually has to (the `messaging_endpoint_id` arm).
+    pub fn effective_scope(&self) -> Cow<'_, str> {
+        match self.messaging_endpoint_id.as_deref() {
+            Some(id) => Cow::Owned(endpoint_scope(id)),
+            None => Cow::Borrowed(&self.scope),
+        }
+    }
+}
+
+/// Phase M1: format a messaging-endpoint scope key.
+///
+/// Indexer producers + routing consumers share this helper so the
+/// `endpoint:` prefix never drifts between sides.
+pub fn endpoint_scope(endpoint_id: &str) -> String {
+    format!("endpoint:{endpoint_id}")
 }
 
 pub type HookInV1 = Fast2FlowHookInV1;
@@ -222,4 +257,63 @@ pub struct PolicyResolutionV1 {
 pub struct RoutingExecutionTraceV1 {
     pub policy: Option<PolicyResolutionV1>,
     pub directive: RoutingDirective,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn base_request(scope: &str) -> Fast2FlowHookInV1 {
+        Fast2FlowHookInV1 {
+            scope: scope.to_string(),
+            envelope: MessageEnvelope {
+                text: "hi".to_string(),
+                channel: None,
+                provider: None,
+            },
+            session_active: false,
+            input_locale: "en-US".to_string(),
+            time_budget_ms: 250,
+            registry_path: String::new(),
+            indexes_path: String::new(),
+            now_unix_ms: 0,
+            messaging_endpoint_id: None,
+        }
+    }
+
+    #[test]
+    fn effective_scope_falls_back_to_scope_field_when_endpoint_absent() {
+        let req = base_request("acme:legal");
+        assert_eq!(req.effective_scope(), "acme:legal");
+    }
+
+    #[test]
+    fn effective_scope_uses_endpoint_prefix_when_set() {
+        let mut req = base_request("acme:legal");
+        req.messaging_endpoint_id = Some("teams-legal-bot".to_string());
+        assert_eq!(req.effective_scope(), "endpoint:teams-legal-bot");
+    }
+
+    #[test]
+    fn endpoint_scope_helper_is_stable_prefix() {
+        assert_eq!(endpoint_scope("teams-x"), "endpoint:teams-x");
+        assert_eq!(endpoint_scope(""), "endpoint:");
+    }
+
+    #[test]
+    fn legacy_hook_json_without_messaging_endpoint_id_deserializes() {
+        let payload = r#"{
+            "scope": "acme:legal",
+            "envelope": {"text": "hi", "channel": null, "provider": null},
+            "session_active": false,
+            "input_locale": "en-US",
+            "time_budget_ms": 250,
+            "registry_path": "",
+            "indexes_path": "",
+            "now_unix_ms": 0
+        }"#;
+        let req: Fast2FlowHookInV1 = serde_json::from_str(payload).expect("legacy parse");
+        assert!(req.messaging_endpoint_id.is_none());
+        assert_eq!(req.effective_scope(), "acme:legal");
+    }
 }
