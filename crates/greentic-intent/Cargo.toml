@@ -1,0 +1,43 @@
+[package]
+name = "greentic-intent"
+version = "0.1.0"
+edition = "2021"
+rust-version.workspace = true
+# Workspace default is `Commercial`. `greentic-intent` is the open
+# lightweight NLU primitive consumed by greentic-fast2flow and shipped
+# standalone to crates.io. License override + publish=true are deliberate.
+license = "Apache-2.0 OR MIT"
+description = "Deterministic multilingual entity detection + marker rendering for natural-language routing. No LLM, no network, no embeddings on the default path."
+repository = "https://github.com/greenticai/greentic-fast2flow"
+homepage = "https://github.com/greenticai/greentic-fast2flow/tree/main/crates/greentic-intent"
+documentation = "https://docs.rs/greentic-intent"
+readme = "README.md"
+keywords = ["nlp", "intent", "entity", "multilingual", "routing"]
+categories = ["text-processing", "internationalization", "parsing"]
+publish = true
+
+[features]
+default = ["builtin-locales"]
+# Ship en-GB/en-US/fr-FR/es-ES/nl-NL/de-DE resource bundles compiled in.
+builtin-locales = []
+# Tiny default gazetteer used by tests/examples (London, Paris, Madrid, …).
+builtin-gazetteer = []
+# Optional extractors gated for footprint.
+email = ["dep:email_address"]
+phone = ["dep:phonenumber"]
+url = ["dep:url"]
+language-detection = []
+# Convenience: enable every optional extractor.
+full = ["email", "phone", "url"]
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+email_address = { version = "0.2", optional = true }
+phonenumber = { version = "0.3", optional = true }
+url = { version = "2", optional = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

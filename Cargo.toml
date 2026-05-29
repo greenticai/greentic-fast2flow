@@ -18,6 +18,9 @@ members = [
     "crates/fast2flow-routing-gtpack",
     "crates/fast2flow-strategy",
     "crates/fast2flow-strategy-phase1",
+    # Standalone open-source primitive (Apache-2.0 OR MIT, publish=true).
+    # See ci/publish_dry_run.sh ALLOWED_PUBLISHABLE_CRATES allowlist.
+    "crates/greentic-intent",
 ]
 
 [workspace.package]
