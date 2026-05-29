@@ -509,6 +509,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "fast2flow-contracts",
+ "fast2flow-indexer",
  "serde",
  "serde_json",
  "serde_yaml_gtc",

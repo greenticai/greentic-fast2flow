@@ -41,30 +41,37 @@ pub async fn handle_hook(
     router.route(request, index).await
 }
 
+/// Phase M1: canonicalize `request.scope` to `effective_scope()` in place.
+///
+/// Idempotent. Every entry point that touches scope (policy resolution,
+/// index lookup, candidate-match guard) MUST run this first so they all
+/// see the same string. Without it, a request carrying both
+/// `messaging_endpoint_id` AND a stale `scope` resolves policy against
+/// the stale scope but routes against the endpoint index.
+pub(crate) fn canonicalize_scope(request: &mut Fast2FlowHookInV1) {
+    let effective = request.effective_scope();
+    if effective != request.scope {
+        request.scope = effective;
+    }
+}
+
 pub async fn handle_hook_from_mounts(
     router: &CoreRouter,
     mut request: Fast2FlowHookInV1,
 ) -> Fast2FlowHookOutV1 {
+    canonicalize_scope(&mut request);
+
     let indexes_path = if request.indexes_path.is_empty() {
-        INDEXES_MOUNT
+        INDEXES_MOUNT.to_string()
     } else {
-        request.indexes_path.as_str()
+        request.indexes_path.clone()
     };
 
-    // Phase M1: when `messaging_endpoint_id` is set, the effective scope is
-    // `endpoint:{id}` and that is what we load + match against. We rewrite
-    // `request.scope` so the policy resolver + match guard see one canonical
-    // string; legacy `tenant:team` callers (no endpoint id) are untouched.
-    let effective_scope = request.effective_scope();
-    if effective_scope != request.scope {
-        request.scope = effective_scope.clone();
-    }
-
-    let lookup = match MountedIndexLookup::load(indexes_path, &effective_scope) {
+    let lookup = match MountedIndexLookup::load(&indexes_path, &request.scope) {
         Ok(lookup) => lookup,
         Err(err) => {
             tracing::warn!(
-                scope = %effective_scope,
+                scope = %request.scope,
                 indexes_path = %indexes_path,
                 error = %err,
                 "failed to load mounted index; routing → continue"

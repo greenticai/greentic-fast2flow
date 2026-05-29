@@ -496,3 +496,71 @@ async fn endpoint_override_is_skipped_when_endpoint_id_absent() {
     );
     assert!((trace.effective.min_confidence - 0.55).abs() < 1e-6);
 }
+
+#[tokio::test]
+async fn scope_overrides_match_effective_scope_when_endpoint_set() {
+    // F4 regression: HostRuntime must canonicalize `request.scope` BEFORE
+    // policy resolution. Otherwise a request carrying a stale tenant scope
+    // AND a `messaging_endpoint_id` resolves policy against the stale
+    // scope while routing dispatches via the endpoint index — split brain.
+    //
+    // Test: seed a scope_override keyed on `endpoint:teams-legal-bot` and
+    // a request with a deliberately stale `scope`. The override must
+    // apply, proving the resolver saw the canonical effective scope.
+    let endpoint_id = "teams-legal-bot";
+    let indexes_root = temp_indexes_dir();
+    seed_refund_index(&endpoint_scope(endpoint_id), &indexes_root);
+
+    let policy = RoutingPolicyV1 {
+        stage_order: vec![PolicyStageV1::Scope],
+        default: PolicyRuleV1 {
+            // Default would fail to dispatch the refund flow (0.5 score).
+            min_confidence: Some(0.95),
+            ..PolicyRuleV1::default()
+        },
+        scope_overrides: vec![ScopePolicyOverrideV1 {
+            id: Some("legal-loose".to_string()),
+            priority: 0,
+            // Keyed on the canonical (post-canonicalize) scope key.
+            scope: endpoint_scope(endpoint_id),
+            rules: PolicyRuleV1 {
+                min_confidence: Some(0.1),
+                ..PolicyRuleV1::default()
+            },
+        }],
+        channel_overrides: vec![],
+        provider_overrides: vec![],
+        endpoint_overrides: vec![],
+    };
+
+    let runtime =
+        HostRuntime::boot_from_config_with_policy(RouterBootstrapConfig::default(), Some(policy))
+            .await
+            .expect("runtime should boot");
+
+    let mut req = request(
+        "stale:tenant:scope",
+        "refund please",
+        indexes_root.as_path(),
+    );
+    req.messaging_endpoint_id = Some(endpoint_id.to_string());
+
+    let (output, trace) = runtime.route_from_mounts_with_trace(req).await;
+    match output.directive {
+        RoutingDirective::Dispatch { .. } => {}
+        other => panic!(
+            "scope_override keyed on endpoint scope must apply after canonicalization, got {other:?}"
+        ),
+    }
+    let trace = trace
+        .policy
+        .expect("trace should include policy resolution");
+    assert!(
+        trace
+            .applied
+            .iter()
+            .any(|rule| rule.source.starts_with("scope:endpoint:")),
+        "scope_overrides must match against the canonicalized (effective) scope",
+    );
+    assert!((trace.effective.min_confidence - 0.1).abs() < 1e-6);
+}
