@@ -36,6 +36,13 @@ pub enum RoutingDirective {
         target: String,
         confidence: f32,
         reason: String,
+        /// Entities extracted from the user text by the intent prefill
+        /// pass. Each entity carries a stable `kind` + `normalized`
+        /// value the downstream consumer can bind to flow inputs or
+        /// card fields. `[]` when intent prefill was skipped or no
+        /// entities matched.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        entities: Vec<RoutingEntity>,
     },
     Respond {
         message: String,
@@ -43,6 +50,23 @@ pub enum RoutingDirective {
     Deny {
         reason: String,
     },
+}
+
+/// Entity surfaced on a routing dispatch so consumers (greentic-start,
+/// card renderers, parameter binders) can prefill UI fields and flow
+/// inputs without re-running NLU on every hop. Mirrors a slimmer view
+/// of `greentic_intent::Entity` — the wire surface stays small.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct RoutingEntity {
+    /// Marker kind (`"date"`, `"time"`, `"location"`, `"email"`, …).
+    /// Matches `greentic_intent::EntityKind::marker_name()`.
+    pub kind: String,
+    /// Normalised value (`"20260530"`, `"14:00"`, `"London"`).
+    pub normalized: String,
+    /// Optional role tag for entities that take prepositional roles
+    /// (`"in"`/`"from"`/`"to"`/… for locations).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

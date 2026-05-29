@@ -1,14 +1,17 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use fast2flow_contracts::{
-    Fast2FlowHookInV1, Fast2FlowHookOutV1, RoutingExecutionTraceV1, RoutingPolicyV1,
+    Fast2FlowHookInV1, Fast2FlowHookOutV1, RoutingDirective, RoutingEntity,
+    RoutingExecutionTraceV1, RoutingPolicyV1,
 };
 use fast2flow_core::{CoreRouter, RouterConfig};
 use fast2flow_hooks::DefaultHookFilter;
 use fast2flow_llm::LlmProvider;
 use fast2flow_strategy::RoutingStrategy;
 use fast2flow_strategy_phase1::Phase1DeterministicStrategy;
+use greentic_intent::{IntentContext, IntentEngine};
 use tracing::{debug, info, warn};
 
 use crate::config::{build_llm, RouterBootstrapConfig};
@@ -21,6 +24,7 @@ pub struct HostRuntime {
     base_config: RouterConfig,
     base_filter: DefaultHookFilter,
     policy: Option<RoutingPolicyV1>,
+    intent_engine: Arc<IntentEngine>,
 }
 
 impl HostRuntime {
@@ -52,6 +56,14 @@ impl HostRuntime {
             policy_loaded,
             "fast2flow host runtime booted"
         );
+        let intent_engine = Arc::new(
+            IntentEngine::builder()
+                .with_builtin_locales()
+                .with_builtin_gazetteer()
+                .with_default_extractors()
+                .build(),
+        );
+
         Ok(Self {
             strategy,
             llm,
@@ -62,10 +74,12 @@ impl HostRuntime {
             },
             base_filter: DefaultHookFilter::default(),
             policy,
+            intent_engine,
         })
     }
 
     pub async fn route_from_mounts(&self, request: Fast2FlowHookInV1) -> Fast2FlowHookOutV1 {
+        let entities = self.extract_entities(&request);
         let (filter, config, _) = self.resolve_request_policy(&request);
         let router = CoreRouter::new(
             Arc::clone(&self.strategy),
@@ -73,13 +87,16 @@ impl HostRuntime {
             self.llm.clone(),
             config,
         );
-        handle_hook_from_mounts(&router, request).await
+        let mut output = handle_hook_from_mounts(&router, request).await;
+        attach_entities(&mut output, entities);
+        output
     }
 
     pub async fn route_from_mounts_with_trace(
         &self,
         request: Fast2FlowHookInV1,
     ) -> (Fast2FlowHookOutV1, RoutingExecutionTraceV1) {
+        let entities = self.extract_entities(&request);
         let (filter, config, policy_trace) = self.resolve_request_policy(&request);
         let router = CoreRouter::new(
             Arc::clone(&self.strategy),
@@ -87,12 +104,50 @@ impl HostRuntime {
             self.llm.clone(),
             config,
         );
-        let output = handle_hook_from_mounts(&router, request).await;
+        let mut output = handle_hook_from_mounts(&router, request).await;
+        attach_entities(&mut output, entities);
         let trace = RoutingExecutionTraceV1 {
             policy: policy_trace,
             directive: output.directive.clone(),
         };
         (output, trace)
+    }
+
+    /// Run the intent engine over the inbound text and return a slim
+    /// view (kind + normalized + optional role) suitable for embedding
+    /// in a `Dispatch` directive. Returns `vec![]` if extraction yields
+    /// nothing.
+    fn extract_entities(&self, request: &Fast2FlowHookInV1) -> Vec<RoutingEntity> {
+        let text = request.envelope.text.as_str();
+        if text.trim().is_empty() {
+            return Vec::new();
+        }
+        let reference_time = DateTime::<Utc>::from_timestamp_millis(request.now_unix_ms as i64)
+            .unwrap_or_else(Utc::now);
+        let language_tag = request
+            .input_locale
+            .split('-')
+            .next()
+            .unwrap_or("en")
+            .to_string();
+        let ctx = IntentContext {
+            reference_time,
+            timezone: "UTC".into(),
+            preferred_locale: Some(request.input_locale.clone()),
+            tenant_locale: None,
+            user_locale: None,
+            allowed_languages: vec![language_tag],
+        };
+        let result = self.intent_engine.mark(text, &ctx);
+        result
+            .entities
+            .into_iter()
+            .map(|e| RoutingEntity {
+                kind: e.kind.marker_name().to_string(),
+                normalized: e.normalized,
+                role: e.role,
+            })
+            .collect()
     }
 
     pub fn policy(&self) -> Option<&RoutingPolicyV1> {
@@ -137,5 +192,22 @@ impl HostRuntime {
             );
         }
         (filter, config, Some(trace))
+    }
+}
+
+/// Inject the intent-extracted entities into a Dispatch directive.
+/// No-op for other directives — Continue/Respond/Deny don't carry
+/// entities. Always overwrites whatever Dispatch carried before so the
+/// host runtime is the single source of truth for entity payloads.
+fn attach_entities(output: &mut Fast2FlowHookOutV1, entities: Vec<RoutingEntity>) {
+    if entities.is_empty() {
+        return;
+    }
+    if let RoutingDirective::Dispatch {
+        entities: ref mut slot,
+        ..
+    } = output.directive
+    {
+        *slot = entities;
     }
 }
