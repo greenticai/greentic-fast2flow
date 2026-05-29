@@ -113,10 +113,7 @@ impl HostRuntime {
         (output, trace)
     }
 
-    /// Run the intent engine over the inbound text and return a slim
-    /// view (kind + normalized + optional role) suitable for embedding
-    /// in a `Dispatch` directive. Returns `vec![]` if extraction yields
-    /// nothing.
+    /// Run intent over the inbound text, returning prefill entities.
     fn extract_entities(&self, request: &Fast2FlowHookInV1) -> Vec<RoutingEntity> {
         let text = request.envelope.text.as_str();
         if text.trim().is_empty() {
@@ -200,14 +197,11 @@ impl HostRuntime {
     }
 }
 
-/// Compute alternate serializations for a given entity kind. Returns
-/// an empty map when no extra formats are useful — the consumer can
-/// always fall back to the canonical `normalized` value.
+/// Alternate serializations per entity kind. Empty when none apply.
 fn entity_formats(kind: &str, normalized: &str) -> std::collections::BTreeMap<String, String> {
     let mut formats = std::collections::BTreeMap::new();
     if kind == "date" && normalized.len() == 8 && normalized.bytes().all(|b| b.is_ascii_digit()) {
-        // `YYYYMMDD` → `YYYY-MM-DD`. Adaptive `Input.Date`, ISO 8601
-        // and most date pickers expect the dashed form.
+        // Adaptive Input.Date + ISO 8601 want YYYY-MM-DD, not YYYYMMDD.
         formats.insert(
             "iso".to_string(),
             format!(
@@ -221,10 +215,7 @@ fn entity_formats(kind: &str, normalized: &str) -> std::collections::BTreeMap<St
     formats
 }
 
-/// Inject the intent-extracted entities into a Dispatch directive.
-/// No-op for other directives — Continue/Respond/Deny don't carry
-/// entities. Always overwrites whatever Dispatch carried before so the
-/// host runtime is the single source of truth for entity payloads.
+/// Write entities into a Dispatch directive; no-op for other variants.
 fn attach_entities(output: &mut Fast2FlowHookOutV1, entities: Vec<RoutingEntity>) {
     if entities.is_empty() {
         return;

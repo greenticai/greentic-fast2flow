@@ -36,11 +36,7 @@ pub enum RoutingDirective {
         target: String,
         confidence: f32,
         reason: String,
-        /// Entities extracted from the user text by the intent prefill
-        /// pass. Each entity carries a stable `kind` + `normalized`
-        /// value the downstream consumer can bind to flow inputs or
-        /// card fields. `[]` when intent prefill was skipped or no
-        /// entities matched.
+        /// Entities extracted by the intent prefill pass.
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         entities: Vec<RoutingEntity>,
     },
@@ -52,25 +48,17 @@ pub enum RoutingDirective {
     },
 }
 
-/// Entity surfaced on a routing dispatch so consumers (greentic-start,
-/// card renderers, parameter binders) can prefill UI fields and flow
-/// inputs without re-running NLU on every hop. Mirrors a slimmer view
-/// of `greentic_intent::Entity` — the wire surface stays small.
+/// Slim view of `greentic_intent::Entity` for prefill on Dispatch.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RoutingEntity {
-    /// Marker kind (`"date"`, `"time"`, `"location"`, `"email"`, …).
-    /// Matches `greentic_intent::EntityKind::marker_name()`.
+    /// Marker kind (matches `EntityKind::marker_name()`).
     pub kind: String,
-    /// Normalised value (`"20260530"`, `"14:00"`, `"London"`).
+    /// Canonical normalised value (e.g. `"20260530"`, `"14:00"`, `"London"`).
     pub normalized: String,
-    /// Optional role tag for entities that take prepositional roles
-    /// (`"in"`/`"from"`/`"to"`/… for locations).
+    /// Role tag from a preceding preposition (locations: `"in"`/`"from"`/`"to"`/…).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub role: Option<String>,
-    /// Alternate serializations indexed by a stable format name.
-    /// Date entities populate `"iso"` with the dashed form. Other
-    /// kinds can add `"display"`, `"12h"`, `"e164"`, etc. without any
-    /// runtime change — consumers fan them out generically.
+    /// Alternate serializations (e.g. `"iso"` → `"2026-05-30"` for dates).
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub formats: std::collections::BTreeMap<String, String>,
 }
