@@ -185,6 +185,70 @@ fn engine_resolves_from_and_to_roles_for_multi_word_cities() {
     );
 }
 
+#[cfg(all(feature = "email", feature = "phone", feature = "url"))]
+#[test]
+fn engine_extracts_email_phone_and_url_alongside_date() {
+    use chrono::{TimeZone, Utc};
+    use greentic_intent::extractors::email::EmailExtractor;
+    use greentic_intent::extractors::phone::PhoneExtractor;
+    use greentic_intent::extractors::url::UrlExtractor;
+
+    let mut builder = IntentEngine::builder()
+        .with_extractor(DateExtractor)
+        .with_extractor(EmailExtractor)
+        .with_extractor(PhoneExtractor)
+        .with_extractor(UrlExtractor);
+    #[cfg(feature = "builtin-locales")]
+    {
+        builder = builder.with_builtin_locales();
+    }
+    let engine = builder.build();
+    let ctx = IntentContext {
+        reference_time: Utc.with_ymd_and_hms(2026, 5, 27, 12, 0, 0).unwrap(),
+        timezone: "Europe/London".into(),
+        preferred_locale: Some("en-GB".into()),
+        tenant_locale: None,
+        user_locale: None,
+        allowed_languages: vec!["en".into()],
+    };
+
+    let text = "ping alice@example.com on +44 20 7946 0958 or see https://example.com tomorrow";
+    let result = engine.mark(text, &ctx);
+
+    let kinds: std::collections::HashSet<EntityKind> =
+        result.entities.iter().map(|e| e.kind).collect();
+    assert!(kinds.contains(&EntityKind::Email));
+    assert!(kinds.contains(&EntityKind::Phone));
+    assert!(kinds.contains(&EntityKind::Url));
+    #[cfg(feature = "builtin-locales")]
+    assert!(kinds.contains(&EntityKind::Date));
+
+    let email = result
+        .entities
+        .iter()
+        .find(|e| e.kind == EntityKind::Email)
+        .unwrap();
+    assert_eq!(email.normalized, "alice@example.com");
+
+    let phone = result
+        .entities
+        .iter()
+        .find(|e| e.kind == EntityKind::Phone)
+        .unwrap();
+    assert_eq!(phone.normalized, "+442079460958");
+
+    let url = result
+        .entities
+        .iter()
+        .find(|e| e.kind == EntityKind::Url)
+        .unwrap();
+    assert!(url.normalized.starts_with("https://example.com"));
+
+    assert!(result.marked_text.contains("{{email}}"));
+    assert!(result.marked_text.contains("{{phone}}"));
+    assert!(result.marked_text.contains("{{url}}"));
+}
+
 #[cfg(all(feature = "builtin-locales", feature = "builtin-gazetteer"))]
 mod multilingual {
     use super::*;

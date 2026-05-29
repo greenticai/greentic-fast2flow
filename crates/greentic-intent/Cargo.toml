@@ -23,16 +23,21 @@ builtin-locales = []
 # Tiny default gazetteer used by tests/examples (London, Paris, Madrid, …).
 builtin-gazetteer = []
 # Optional extractors gated for footprint.
-email = []
-phone = []
-url = []
+email = ["dep:email_address"]
+phone = ["dep:phonenumber"]
+url = ["dep:url"]
 language-detection = []
+# Convenience: enable every optional extractor.
+full = ["email", "phone", "url"]
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
+email_address = { version = "0.2", optional = true }
+phonenumber = { version = "0.3", optional = true }
+url = { version = "2", optional = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }

@@ -5,6 +5,13 @@ pub mod date;
 pub mod location;
 pub mod time;
 
+#[cfg(feature = "email")]
+pub mod email;
+#[cfg(feature = "phone")]
+pub mod phone;
+#[cfg(feature = "url")]
+pub mod url;
+
 use crate::context::IntentContext;
 use crate::entity::{EntityEvidence, EntityKind};
 use crate::locale::ResolvedLocale;
