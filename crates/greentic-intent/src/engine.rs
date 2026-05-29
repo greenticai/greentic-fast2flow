@@ -52,6 +52,23 @@ impl IntentEngineBuilder {
         self
     }
 
+    /// Register the built-in locale bundles (Phase A: en-GB only).
+    /// Available only with the `builtin-locales` feature.
+    #[cfg(feature = "builtin-locales")]
+    pub fn with_builtin_locales(mut self) -> Self {
+        let en_gb = crate::builtin::en_gb_bundle();
+        self.resources.locales.insert(en_gb.locale.clone(), en_gb);
+        self
+    }
+
+    /// Register the default extractor set (date + location). Each
+    /// extractor relies on resources populated separately
+    /// (`with_builtin_locales()`, `with_builtin_gazetteer()`).
+    pub fn with_default_extractors(self) -> Self {
+        self.with_extractor(crate::extractors::date::DateExtractor)
+            .with_extractor(crate::extractors::location::LocationExtractor)
+    }
+
     /// Build the engine.
     pub fn build(self) -> IntentEngine {
         IntentEngine {

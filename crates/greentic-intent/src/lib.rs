@@ -6,6 +6,8 @@
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations)]
 
+#[cfg(feature = "builtin-locales")]
+pub mod builtin;
 pub mod context;
 pub mod engine;
 pub mod entity;
