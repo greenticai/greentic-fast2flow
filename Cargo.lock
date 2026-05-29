@@ -651,7 +651,9 @@ name = "fast2flow-indexer"
 version = "1.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "fast2flow-contracts",
+ "greentic-intent",
  "serde",
  "serde_json",
  "tracing",
