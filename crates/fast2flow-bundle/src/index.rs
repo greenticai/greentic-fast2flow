@@ -6,6 +6,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 use crate::parser::FlowEntry;
+use fast2flow_contracts::endpoint_scope;
 
 /// Fast2flow index manifest containing flow entries and TF-IDF data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,23 +30,12 @@ pub struct IndexManifest {
     pub document_frequencies: HashMap<String, u32>,
 }
 
-/// Builds an index manifest from flow entries.
+/// Builds an index manifest from flow entries against an explicit scope key.
 ///
-/// This function:
-/// 1. Computes term frequencies for each document
-/// 2. Computes document frequencies for TF-IDF calculation
-/// 3. Applies title boosting (2x weight for title words)
-///
-/// # Arguments
-///
-/// * `entries` - Slice of flow entries to index
-/// * `tenant` - Tenant identifier
-/// * `team` - Team identifier
-///
-/// # Returns
-///
-/// A complete `IndexManifest` ready for serialization.
-pub fn build_index_manifest(entries: &[FlowEntry], tenant: &str, team: &str) -> IndexManifest {
+/// `scope` is the opaque routing key — `"tenant:team"` (legacy) or
+/// `"endpoint:{endpoint_id}"` (Phase M1, via [`endpoint_scope`]). The
+/// `MountedIndexLookup` consumer treats this string as a match guard.
+pub fn build_index_manifest_with_scope(entries: &[FlowEntry], scope: &str) -> IndexManifest {
     let mut term_frequencies: HashMap<String, HashMap<String, u32>> = HashMap::new();
     let mut document_frequencies: HashMap<String, u32> = HashMap::new();
 
@@ -53,12 +43,11 @@ pub fn build_index_manifest(entries: &[FlowEntry], tenant: &str, team: &str) -> 
         let doc_key = format!("{}:{}", entry.pack_id, entry.flow_id);
         let mut doc_tf: HashMap<String, u32> = HashMap::new();
 
-        // Count term frequencies for this document
         for keyword in &entry.keywords {
             *doc_tf.entry(keyword.clone()).or_insert(0) += 1;
         }
 
-        // Add title words with higher weight (2x boost)
+        // Title words get a 2x boost.
         for word in entry.title.to_lowercase().split_whitespace() {
             let clean: String = word.chars().filter(|c| c.is_alphanumeric()).collect();
             if clean.len() >= 2 {
@@ -66,7 +55,6 @@ pub fn build_index_manifest(entries: &[FlowEntry], tenant: &str, team: &str) -> 
             }
         }
 
-        // Update document frequencies
         for term in doc_tf.keys() {
             *document_frequencies.entry(term.clone()).or_insert(0) += 1;
         }
@@ -76,12 +64,33 @@ pub fn build_index_manifest(entries: &[FlowEntry], tenant: &str, team: &str) -> 
 
     IndexManifest {
         version: "1.0".to_string(),
-        scope: format!("{}:{}", tenant, team),
+        scope: scope.to_string(),
         last_updated: Utc::now().to_rfc3339(),
         flows: entries.to_vec(),
         term_frequencies,
         document_frequencies,
     }
+}
+
+/// Builds an index manifest from flow entries.
+///
+/// Legacy `tenant:team` scope. Use [`build_index_manifest_for_endpoint`] for
+/// Phase M1 per-endpoint scoping.
+pub fn build_index_manifest(entries: &[FlowEntry], tenant: &str, team: &str) -> IndexManifest {
+    build_index_manifest_with_scope(entries, &format!("{tenant}:{team}"))
+}
+
+/// Phase M1: build an index manifest scoped to a single messaging endpoint.
+///
+/// Caller MUST pre-filter `entries` to the endpoint's `linked_bundles` —
+/// the corpus IS the union of those bundles' flows, no more, no less. The
+/// scope key matches what [`Fast2FlowHookInV1::effective_scope`] derives at
+/// route time, so `MountedIndexLookup::search` resolves to this manifest.
+pub fn build_index_manifest_for_endpoint(
+    entries: &[FlowEntry],
+    endpoint_id: &str,
+) -> IndexManifest {
+    build_index_manifest_with_scope(entries, &endpoint_scope(endpoint_id))
 }
 
 /// Generates human-readable intent documentation in Markdown format.

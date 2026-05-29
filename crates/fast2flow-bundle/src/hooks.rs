@@ -3,12 +3,16 @@
 //! These functions are designed to be called by the Greentic toolchain
 //! during bundle setup and runtime operations.
 
+use std::collections::HashSet;
 use std::path::Path;
 
 use anyhow::{Context, Result};
 use tracing::{info, warn};
 
-use crate::index::{build_index_manifest, generate_intents_md, IndexManifest};
+use crate::index::{
+    build_index_manifest, build_index_manifest_for_endpoint, generate_intents_md, IndexManifest,
+};
+use crate::parser::FlowEntry;
 use crate::scanner::scan_bundle_verbose;
 
 /// Result of an indexing operation.
@@ -80,6 +84,135 @@ pub fn reindex_on_pack_change(
     team: &str,
 ) -> Result<IndexResult> {
     index_bundle_internal(bundle_path, output_path, tenant, team, true, true)
+}
+
+/// Phase M1: index a bundle scoped to a single messaging endpoint.
+///
+/// `linked_bundle_pack_ids` is the endpoint's `linked_bundles[*]` — only
+/// flows whose `pack_id` is in this set make it into the corpus. An empty
+/// set keeps the corpus empty (fail-closed: an endpoint with no linked
+/// bundles can route nothing). The on-disk index is written under
+/// `endpoint:{endpoint_id}` per the routing scope contract.
+pub fn index_bundle_for_endpoint(
+    bundle_path: &Path,
+    output_path: &Path,
+    endpoint_id: &str,
+    linked_bundle_pack_ids: &HashSet<String>,
+    generate_docs: bool,
+) -> Result<IndexResult> {
+    index_bundle_for_endpoint_internal(
+        bundle_path,
+        output_path,
+        endpoint_id,
+        linked_bundle_pack_ids,
+        generate_docs,
+        false,
+    )
+}
+
+/// Phase M1: re-index for an endpoint on `link-bundle` / `unlink-bundle` /
+/// bundle revision-warm. Verbose variant of [`index_bundle_for_endpoint`].
+pub fn reindex_for_endpoint_on_pack_change(
+    bundle_path: &Path,
+    output_path: &Path,
+    endpoint_id: &str,
+    linked_bundle_pack_ids: &HashSet<String>,
+) -> Result<IndexResult> {
+    index_bundle_for_endpoint_internal(
+        bundle_path,
+        output_path,
+        endpoint_id,
+        linked_bundle_pack_ids,
+        true,
+        true,
+    )
+}
+
+fn index_bundle_for_endpoint_internal(
+    bundle_path: &Path,
+    output_path: &Path,
+    endpoint_id: &str,
+    linked_bundle_pack_ids: &HashSet<String>,
+    generate_docs: bool,
+    verbose: bool,
+) -> Result<IndexResult> {
+    let all_entries = scan_bundle_verbose(bundle_path, verbose)?;
+    let entries: Vec<FlowEntry> = all_entries
+        .into_iter()
+        .filter(|flow| linked_bundle_pack_ids.contains(&flow.pack_id))
+        .collect();
+
+    let scope_label = format!("endpoint:{endpoint_id}");
+
+    if entries.is_empty() {
+        warn!(
+            bundle = %bundle_path.display(),
+            scope = %scope_label,
+            linked_bundle_count = linked_bundle_pack_ids.len(),
+            "no flows in endpoint corpus",
+        );
+        return Ok(IndexResult {
+            manifest: build_index_manifest_for_endpoint(&[], endpoint_id),
+            index_path: None,
+            intents_path: None,
+            flow_count: 0,
+        });
+    }
+
+    let manifest = build_index_manifest_for_endpoint(&entries, endpoint_id);
+
+    std::fs::create_dir_all(output_path).with_context(|| {
+        format!(
+            "Failed to create output directory: {}",
+            output_path.display()
+        )
+    })?;
+
+    let index_path = output_path.join("index.json");
+    let index_json =
+        serde_json::to_string_pretty(&manifest).context("Failed to serialize index manifest")?;
+    std::fs::write(&index_path, &index_json)
+        .with_context(|| format!("Failed to write {}", index_path.display()))?;
+
+    if verbose {
+        info!(path = %index_path.display(), "wrote endpoint index");
+    }
+
+    let intents_path = if generate_docs {
+        // intents.md still groups by pack and renders identically. Reuse the
+        // tenant/team-flavoured generator by passing the endpoint id in both
+        // slots so the header reads `endpoint:<id>:<id>`. A dedicated
+        // generator is out of scope for M1.3.
+        let intents_md = generate_intents_md(&entries, endpoint_id, endpoint_id);
+        let path = output_path.join("intents.md");
+        std::fs::write(&path, &intents_md)
+            .with_context(|| format!("Failed to write {}", path.display()))?;
+
+        if verbose {
+            info!(path = %path.display(), "wrote intents");
+        }
+
+        Some(path)
+    } else {
+        None
+    };
+
+    let flow_count = entries.len();
+
+    info!(
+        flow_count,
+        scope = %scope_label,
+        index_key = %format!("fast2flow:index:endpoint:{endpoint_id}"),
+        index_path = %index_path.display(),
+        "bundle indexed for endpoint",
+    );
+
+    Ok(IndexResult {
+        manifest,
+        index_path: Some(index_path),
+        intents_path,
+        flow_count,
+    })
 }
 
 /// Internal implementation for bundle indexing.
@@ -239,5 +372,97 @@ tags:
         fs::write(flow_dir.join("test.ygtc"), "id: test").unwrap();
 
         assert!(validate_bundle(bundle_dir.path()));
+    }
+
+    fn write_flow(dir: &Path, pack_id: &str, flow_id: &str, title: &str, tag: &str) {
+        let flow_dir = dir.join(format!("packs/{pack_id}/flows"));
+        fs::create_dir_all(&flow_dir).unwrap();
+        fs::write(
+            flow_dir.join(format!("{flow_id}.ygtc")),
+            format!(
+                "id: {flow_id}\ntitle: {title}\ndescription: ignored\ntype: messaging\ntags:\n  - {tag}\n",
+            ),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn index_bundle_for_endpoint_corpus_is_union_of_linked_bundles_only() {
+        let bundle_dir = tempdir().unwrap();
+        let output_dir = tempdir().unwrap();
+
+        write_flow(bundle_dir.path(), "legal-pack", "nda", "Legal NDA", "legal");
+        write_flow(
+            bundle_dir.path(),
+            "accounting-pack",
+            "expense",
+            "Accounting Expense",
+            "accounting",
+        );
+
+        let mut linked: HashSet<String> = HashSet::new();
+        linked.insert("legal-pack".to_string());
+
+        let result = index_bundle_for_endpoint(
+            bundle_dir.path(),
+            output_dir.path(),
+            "teams-legal",
+            &linked,
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(result.flow_count, 1, "only legal-pack flows must survive");
+        assert_eq!(result.manifest.scope, "endpoint:teams-legal");
+        let flow_ids: Vec<&str> = result
+            .manifest
+            .flows
+            .iter()
+            .map(|f| f.flow_id.as_str())
+            .collect();
+        assert_eq!(flow_ids, vec!["nda"]);
+    }
+
+    #[test]
+    fn index_bundle_for_endpoint_empty_linked_set_yields_empty_corpus() {
+        let bundle_dir = tempdir().unwrap();
+        let output_dir = tempdir().unwrap();
+        write_flow(bundle_dir.path(), "any-pack", "any", "Any", "any");
+
+        let linked: HashSet<String> = HashSet::new();
+        let result = index_bundle_for_endpoint(
+            bundle_dir.path(),
+            output_dir.path(),
+            "teams-empty",
+            &linked,
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(result.flow_count, 0);
+        assert!(result.index_path.is_none(), "no on-disk write when empty");
+        assert_eq!(result.manifest.scope, "endpoint:teams-empty");
+    }
+
+    #[test]
+    fn reindex_for_endpoint_on_pack_change_writes_verbose() {
+        let bundle_dir = tempdir().unwrap();
+        let output_dir = tempdir().unwrap();
+        write_flow(bundle_dir.path(), "pack", "flow", "Title", "tag");
+        let mut linked = HashSet::new();
+        linked.insert("pack".to_string());
+
+        let result = reindex_for_endpoint_on_pack_change(
+            bundle_dir.path(),
+            output_dir.path(),
+            "teams-x",
+            &linked,
+        )
+        .unwrap();
+
+        assert_eq!(result.flow_count, 1);
+        assert_eq!(result.manifest.scope, "endpoint:teams-x");
+        assert!(result.index_path.as_ref().unwrap().exists());
+        assert!(result.intents_path.as_ref().unwrap().exists());
     }
 }

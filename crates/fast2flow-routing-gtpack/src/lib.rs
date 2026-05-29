@@ -43,7 +43,7 @@ pub async fn handle_hook(
 
 pub async fn handle_hook_from_mounts(
     router: &CoreRouter,
-    request: Fast2FlowHookInV1,
+    mut request: Fast2FlowHookInV1,
 ) -> Fast2FlowHookOutV1 {
     let indexes_path = if request.indexes_path.is_empty() {
         INDEXES_MOUNT
@@ -51,11 +51,20 @@ pub async fn handle_hook_from_mounts(
         request.indexes_path.as_str()
     };
 
-    let lookup = match MountedIndexLookup::load(indexes_path, &request.scope) {
+    // Phase M1: when `messaging_endpoint_id` is set, the effective scope is
+    // `endpoint:{id}` and that is what we load + match against. We rewrite
+    // `request.scope` so the policy resolver + match guard see one canonical
+    // string; legacy `tenant:team` callers (no endpoint id) are untouched.
+    let effective_scope = request.effective_scope();
+    if effective_scope != request.scope {
+        request.scope = effective_scope.clone();
+    }
+
+    let lookup = match MountedIndexLookup::load(indexes_path, &effective_scope) {
         Ok(lookup) => lookup,
         Err(err) => {
             tracing::warn!(
-                scope = %request.scope,
+                scope = %effective_scope,
                 indexes_path = %indexes_path,
                 error = %err,
                 "failed to load mounted index; routing → continue"

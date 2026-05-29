@@ -105,6 +105,7 @@ fn map_in(request: WitIn) -> Fast2FlowHookInV1 {
         registry_path: request.registry_path,
         indexes_path: request.indexes_path,
         now_unix_ms: request.now_unix_ms,
+        messaging_endpoint_id: request.messaging_endpoint_id,
     }
 }
 

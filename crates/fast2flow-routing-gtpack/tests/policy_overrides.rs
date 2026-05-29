@@ -1,9 +1,9 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use fast2flow_contracts::{
-    ChannelPolicyOverrideV1, Fast2FlowHookInV1, FlowDoc, MessageEnvelope, PolicyRuleV1,
-    PolicyStageV1, ProviderPolicyOverrideV1, RespondRuleV1, RoutingDirective, RoutingPolicyV1,
-    ScopePolicyOverrideV1, TextMatchModeV1,
+    endpoint_scope, ChannelPolicyOverrideV1, EndpointPolicyOverrideV1, Fast2FlowHookInV1, FlowDoc,
+    MessageEnvelope, PolicyRuleV1, PolicyStageV1, ProviderPolicyOverrideV1, RespondRuleV1,
+    RoutingDirective, RoutingPolicyV1, ScopePolicyOverrideV1, TextMatchModeV1,
 };
 use fast2flow_indexer::build_index;
 use fast2flow_routing_gtpack::{load_policy_from_path, HostRuntime, RouterBootstrapConfig};
@@ -32,6 +32,7 @@ async fn scope_override_can_tighten_confidence_threshold() {
         }],
         channel_overrides: vec![],
         provider_overrides: vec![],
+        endpoint_overrides: vec![],
     };
 
     let runtime =
@@ -74,6 +75,7 @@ async fn channel_override_can_force_respond() {
             },
         }],
         provider_overrides: vec![],
+        endpoint_overrides: vec![],
     };
 
     let runtime =
@@ -116,6 +118,7 @@ async fn load_policy_from_path_parses_valid_json() {
         scope_overrides: vec![],
         channel_overrides: vec![],
         provider_overrides: vec![],
+        endpoint_overrides: vec![],
     })
     .expect("policy json must serialize");
 
@@ -173,6 +176,7 @@ async fn route_with_trace_reports_policy_overwrites() {
                 ..PolicyRuleV1::default()
             },
         }],
+        endpoint_overrides: vec![],
     };
 
     let runtime =
@@ -237,6 +241,7 @@ async fn stage_order_changes_effective_precedence() {
                 ..PolicyRuleV1::default()
             },
         }],
+        endpoint_overrides: vec![],
     };
 
     let runtime =
@@ -288,6 +293,7 @@ async fn higher_priority_override_wins_within_stage() {
         ],
         channel_overrides: vec![],
         provider_overrides: vec![],
+        endpoint_overrides: vec![],
     };
 
     let runtime =
@@ -325,6 +331,7 @@ async fn invalid_regex_policy_is_rejected() {
             },
         }],
         provider_overrides: vec![],
+        endpoint_overrides: vec![],
     };
 
     match HostRuntime::boot_from_config_with_policy(RouterBootstrapConfig::default(), Some(policy))
@@ -365,6 +372,7 @@ fn request(scope: &str, text: &str, indexes_root: &std::path::Path) -> Fast2Flow
         registry_path: "/mnt/registry/latest.json".to_string(),
         indexes_path: indexes_root.display().to_string(),
         now_unix_ms: 0,
+        messaging_endpoint_id: None,
     }
 }
 
@@ -374,4 +382,117 @@ fn temp_indexes_dir() -> std::path::PathBuf {
         .unwrap_or_else(|_| Duration::from_secs(0))
         .as_nanos();
     std::env::temp_dir().join(format!("fast2flow-policy-idx-{suffix}"))
+}
+
+#[tokio::test]
+async fn endpoint_override_applies_when_endpoint_id_matches() {
+    // Phase M1.3 — a policy can shape behaviour per messaging endpoint via
+    // `endpoint_overrides`. We seed an endpoint-scoped index, set a
+    // high default min_confidence (so default would NOT dispatch), then
+    // attach an `endpoint_overrides` entry that drops it for THIS endpoint.
+    let endpoint_id = "teams-legal-bot";
+    let indexes_root = temp_indexes_dir();
+    seed_refund_index(&endpoint_scope(endpoint_id), &indexes_root);
+
+    let policy = RoutingPolicyV1 {
+        stage_order: vec![PolicyStageV1::Scope, PolicyStageV1::Endpoint],
+        default: PolicyRuleV1 {
+            min_confidence: Some(0.95),
+            ..PolicyRuleV1::default()
+        },
+        scope_overrides: vec![],
+        channel_overrides: vec![],
+        provider_overrides: vec![],
+        endpoint_overrides: vec![EndpointPolicyOverrideV1 {
+            id: Some("legal-loose".to_string()),
+            priority: 0,
+            messaging_endpoint_id: endpoint_id.to_string(),
+            rules: PolicyRuleV1 {
+                min_confidence: Some(0.1),
+                ..PolicyRuleV1::default()
+            },
+        }],
+    };
+
+    let runtime =
+        HostRuntime::boot_from_config_with_policy(RouterBootstrapConfig::default(), Some(policy))
+            .await
+            .expect("runtime should boot");
+
+    let mut req = request(
+        "ignored:legacy:scope",
+        "refund please",
+        indexes_root.as_path(),
+    );
+    req.messaging_endpoint_id = Some(endpoint_id.to_string());
+
+    let (output, trace) = runtime.route_from_mounts_with_trace(req).await;
+
+    match output.directive {
+        RoutingDirective::Dispatch { .. } => {}
+        other => panic!(
+            "endpoint override should loosen min_confidence and allow dispatch, got {other:?}"
+        ),
+    }
+    let trace = trace
+        .policy
+        .expect("trace should include policy resolution");
+    assert!(
+        trace
+            .applied
+            .iter()
+            .any(|rule| rule.source.starts_with("endpoint:")),
+        "expected endpoint stage to have applied at least one rule",
+    );
+    // Default min_confidence (0.95) overridden by endpoint stage (0.1).
+    assert!((trace.effective.min_confidence - 0.1).abs() < 1e-6);
+}
+
+#[tokio::test]
+async fn endpoint_override_is_skipped_when_endpoint_id_absent() {
+    // Phase M1.3 — legacy callers (no messaging_endpoint_id) must not be
+    // touched by `endpoint_overrides`. Default min_confidence stays put.
+    let scope = "tenant-a";
+    let indexes_root = temp_indexes_dir();
+    seed_refund_index(scope, &indexes_root);
+
+    let policy = RoutingPolicyV1 {
+        stage_order: vec![PolicyStageV1::Endpoint],
+        default: PolicyRuleV1 {
+            min_confidence: Some(0.55),
+            ..PolicyRuleV1::default()
+        },
+        scope_overrides: vec![],
+        channel_overrides: vec![],
+        provider_overrides: vec![],
+        endpoint_overrides: vec![EndpointPolicyOverrideV1 {
+            id: None,
+            priority: 0,
+            messaging_endpoint_id: "some-other-endpoint".to_string(),
+            rules: PolicyRuleV1 {
+                min_confidence: Some(0.01),
+                ..PolicyRuleV1::default()
+            },
+        }],
+    };
+
+    let runtime =
+        HostRuntime::boot_from_config_with_policy(RouterBootstrapConfig::default(), Some(policy))
+            .await
+            .expect("runtime should boot");
+
+    let (_out, trace) = runtime
+        .route_from_mounts_with_trace(request(scope, "refund please", indexes_root.as_path()))
+        .await;
+    let trace = trace
+        .policy
+        .expect("trace should include policy resolution");
+    assert!(
+        trace
+            .applied
+            .iter()
+            .all(|rule| !rule.source.starts_with("endpoint:")),
+        "endpoint stage must be skipped when messaging_endpoint_id is None",
+    );
+    assert!((trace.effective.min_confidence - 0.55).abs() < 1e-6);
 }

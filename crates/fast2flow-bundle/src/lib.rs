@@ -24,6 +24,9 @@ mod scanner;
 
 pub mod hooks;
 
-pub use index::{build_index_manifest, generate_intents_md, IndexManifest};
+pub use index::{
+    build_index_manifest, build_index_manifest_for_endpoint, build_index_manifest_with_scope,
+    generate_intents_md, IndexManifest,
+};
 pub use parser::{extract_keywords, parse_flow_file, FlowEntry, FlowMeta};
 pub use scanner::{derive_pack_id, find_flow_files, scan_bundle};

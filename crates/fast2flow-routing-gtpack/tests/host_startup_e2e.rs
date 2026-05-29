@@ -39,6 +39,7 @@ async fn host_runtime_boot_from_env_routes_with_mounted_indexes() {
             registry_path: "/mnt/registry/latest.json".to_string(),
             indexes_path: indexes_root.display().to_string(),
             now_unix_ms: 0,
+            messaging_endpoint_id: None,
         })
         .await;
 
