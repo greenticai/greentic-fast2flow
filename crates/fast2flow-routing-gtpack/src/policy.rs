@@ -85,16 +85,6 @@ pub(crate) fn validate_policy(policy: &RoutingPolicyV1) -> Result<()> {
         }
         validate_policy_rule(&entry.rules, &format!("provider:{provider}"))?;
     }
-    for entry in &policy.endpoint_overrides {
-        let endpoint = entry.messaging_endpoint_id.trim();
-        if endpoint.is_empty() {
-            return Err(anyhow!("endpoint override has empty messaging_endpoint_id"));
-        }
-        if matches!(entry.id.as_deref(), Some(id) if id.trim().is_empty()) {
-            return Err(anyhow!("endpoint override id must not be empty"));
-        }
-        validate_policy_rule(&entry.rules, &format!("endpoint:{endpoint}"))?;
-    }
 
     Ok(())
 }
@@ -164,7 +154,6 @@ pub(crate) fn resolve_policy(
             PolicyStageV1::Scope,
             PolicyStageV1::Channel,
             PolicyStageV1::Provider,
-            PolicyStageV1::Endpoint,
         ]
     } else {
         policy.stage_order.clone()
@@ -183,9 +172,6 @@ pub(crate) fn resolve_policy(
             }
             PolicyStageV1::Provider => {
                 apply_provider_overrides(policy, request, &mut filter, &mut config, &mut tracker)
-            }
-            PolicyStageV1::Endpoint => {
-                apply_endpoint_overrides(policy, request, &mut filter, &mut config, &mut tracker)
             }
         }
     }
@@ -391,39 +377,6 @@ fn apply_provider_overrides(
             &source_label(
                 "provider",
                 &entry.provider,
-                entry.priority,
-                entry.id.as_deref(),
-            ),
-            tracker,
-        );
-    }
-}
-
-fn apply_endpoint_overrides(
-    policy: &RoutingPolicyV1,
-    request: &Fast2FlowHookInV1,
-    filter: &mut DefaultHookFilter,
-    config: &mut RouterConfig,
-    tracker: &mut PolicyTracker,
-) {
-    let Some(endpoint) = request.messaging_endpoint_id.as_ref() else {
-        return;
-    };
-    let mut matching = policy
-        .endpoint_overrides
-        .iter()
-        .enumerate()
-        .filter(|(_, entry)| entry.messaging_endpoint_id.eq_ignore_ascii_case(endpoint))
-        .collect::<Vec<_>>();
-    matching.sort_by_key(|(index, entry)| (entry.priority, *index));
-    for (_, entry) in matching {
-        apply_policy_rule(
-            filter,
-            config,
-            &entry.rules,
-            &source_label(
-                "endpoint",
-                &entry.messaging_endpoint_id,
                 entry.priority,
                 entry.id.as_deref(),
             ),

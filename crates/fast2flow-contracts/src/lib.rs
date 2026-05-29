@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -29,13 +31,17 @@ impl Fast2FlowHookInV1 {
     /// Phase M1: per-endpoint scope key.
     ///
     /// Returns `endpoint:{messaging_endpoint_id}` when the new field is set,
-    /// otherwise falls through to `scope`. The scope string is consumed by
+    /// otherwise borrows `scope`. The scope string is consumed by
     /// `MountedIndexLookup` (for index file resolution + match guard) and by
     /// `RoutingPolicyV1::scope_overrides`; both treat it as an opaque key.
-    pub fn effective_scope(&self) -> String {
+    ///
+    /// `Cow` keeps the legacy `tenant:team` path allocation-free — the hot
+    /// `canonicalize_scope` call on every request only takes ownership when
+    /// it actually has to (the `messaging_endpoint_id` arm).
+    pub fn effective_scope(&self) -> Cow<'_, str> {
         match self.messaging_endpoint_id.as_deref() {
-            Some(id) => endpoint_scope(id),
-            None => self.scope.clone(),
+            Some(id) => Cow::Owned(endpoint_scope(id)),
+            None => Cow::Borrowed(&self.scope),
         }
     }
 }
@@ -181,28 +187,12 @@ pub struct ProviderPolicyOverrideV1 {
     pub rules: PolicyRuleV1,
 }
 
-/// Phase M1: per-endpoint policy override (matched via
-/// [`Fast2FlowHookInV1::messaging_endpoint_id`]).
-///
-/// Lives next to `ScopePolicyOverrideV1` so existing files keep working —
-/// callers that never send `messaging_endpoint_id` see this stage skipped.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct EndpointPolicyOverrideV1 {
-    #[serde(default)]
-    pub id: Option<String>,
-    #[serde(default)]
-    pub priority: i32,
-    pub messaging_endpoint_id: String,
-    pub rules: PolicyRuleV1,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum PolicyStageV1 {
     Scope,
     Channel,
     Provider,
-    Endpoint,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -213,10 +203,6 @@ pub struct RoutingPolicyV1 {
     pub scope_overrides: Vec<ScopePolicyOverrideV1>,
     pub channel_overrides: Vec<ChannelPolicyOverrideV1>,
     pub provider_overrides: Vec<ProviderPolicyOverrideV1>,
-    /// Phase M1: per-endpoint overrides; `#[serde(default)]` keeps legacy
-    /// policy files (no `endpoint_overrides`) deserializing untouched.
-    #[serde(default)]
-    pub endpoint_overrides: Vec<EndpointPolicyOverrideV1>,
 }
 
 impl Default for RoutingPolicyV1 {
@@ -227,20 +213,15 @@ impl Default for RoutingPolicyV1 {
             scope_overrides: Vec::new(),
             channel_overrides: Vec::new(),
             provider_overrides: Vec::new(),
-            endpoint_overrides: Vec::new(),
         }
     }
 }
 
 fn default_policy_stage_order() -> Vec<PolicyStageV1> {
-    // Endpoint runs LAST so a per-endpoint policy can override the broader
-    // scope/channel/provider defaults — mirrors how `set_welcome_flow`
-    // overrides `entry_flows.first()` in M1.5.
     vec![
         PolicyStageV1::Scope,
         PolicyStageV1::Channel,
         PolicyStageV1::Provider,
-        PolicyStageV1::Endpoint,
     ]
 }
 
@@ -317,19 +298,6 @@ mod tests {
     fn endpoint_scope_helper_is_stable_prefix() {
         assert_eq!(endpoint_scope("teams-x"), "endpoint:teams-x");
         assert_eq!(endpoint_scope(""), "endpoint:");
-    }
-
-    #[test]
-    fn legacy_policy_json_without_endpoint_overrides_deserializes() {
-        let payload = r#"{
-            "stage_order": ["scope", "channel", "provider"],
-            "default": {},
-            "scope_overrides": [],
-            "channel_overrides": [],
-            "provider_overrides": []
-        }"#;
-        let policy: RoutingPolicyV1 = serde_json::from_str(payload).expect("legacy parse");
-        assert!(policy.endpoint_overrides.is_empty());
     }
 
     #[test]

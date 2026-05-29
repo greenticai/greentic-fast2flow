@@ -48,9 +48,12 @@ pub async fn handle_hook(
 /// see the same string. Without it, a request carrying both
 /// `messaging_endpoint_id` AND a stale `scope` resolves policy against
 /// the stale scope but routes against the endpoint index.
+///
+/// The `Cow::Owned` arm only fires when the effective scope differs
+/// from `scope` — legacy (no `messaging_endpoint_id`) requests are a
+/// no-op, no allocation.
 pub(crate) fn canonicalize_scope(request: &mut Fast2FlowHookInV1) {
-    let effective = request.effective_scope();
-    if effective != request.scope {
+    if let std::borrow::Cow::Owned(effective) = request.effective_scope() {
         request.scope = effective;
     }
 }
@@ -61,24 +64,25 @@ pub async fn handle_hook_from_mounts(
 ) -> Fast2FlowHookOutV1 {
     canonicalize_scope(&mut request);
 
-    let indexes_path = if request.indexes_path.is_empty() {
-        INDEXES_MOUNT.to_string()
-    } else {
-        request.indexes_path.clone()
-    };
-
-    let lookup = match MountedIndexLookup::load(&indexes_path, &request.scope) {
-        Ok(lookup) => lookup,
-        Err(err) => {
-            tracing::warn!(
-                scope = %request.scope,
-                indexes_path = %indexes_path,
-                error = %err,
-                "failed to load mounted index; routing → continue"
-            );
-            return Fast2FlowHookOutV1 {
-                directive: RoutingDirective::Continue,
-            };
+    let lookup = {
+        let indexes_path: &str = if request.indexes_path.is_empty() {
+            INDEXES_MOUNT
+        } else {
+            &request.indexes_path
+        };
+        match MountedIndexLookup::load(indexes_path, &request.scope) {
+            Ok(lookup) => lookup,
+            Err(err) => {
+                tracing::warn!(
+                    scope = %request.scope,
+                    indexes_path = %indexes_path,
+                    error = %err,
+                    "failed to load mounted index; routing → continue"
+                );
+                return Fast2FlowHookOutV1 {
+                    directive: RoutingDirective::Continue,
+                };
+            }
         }
     };
 
