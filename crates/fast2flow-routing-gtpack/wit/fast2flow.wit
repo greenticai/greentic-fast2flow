@@ -21,9 +21,18 @@ interface routing-types {
     messaging-endpoint-id: option<string>,
   }
 
+  // Named record over positional tuple so future additions are
+  // field-additive instead of position-shifting.
+  record dispatch-payload {
+    target: string,
+    confidence: f32,
+    reason: string,
+    utterance: option<string>,
+  }
+
   variant routing-directive {
     continue,
-    dispatch(tuple<string, f32, string>),
+    dispatch(dispatch-payload),
     respond(string),
     deny(string),
   }

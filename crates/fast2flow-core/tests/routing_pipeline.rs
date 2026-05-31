@@ -22,8 +22,11 @@ async fn deterministic_routing_dispatches_refund_flow() {
         .await;
 
     match output.directive {
-        RoutingDirective::Dispatch { target, .. } => {
+        RoutingDirective::Dispatch {
+            target, utterance, ..
+        } => {
             assert_eq!(target, "support/refund_flow");
+            assert_eq!(utterance.as_deref(), Some("refund please"));
         }
         other => panic!("expected dispatch, got {other:?}"),
     }
@@ -53,9 +56,15 @@ async fn llm_fallback_dispatches_when_deterministic_misses() {
         .await;
 
     match output.directive {
-        RoutingDirective::Dispatch { target, reason, .. } => {
+        RoutingDirective::Dispatch {
+            target,
+            reason,
+            utterance,
+            ..
+        } => {
             assert_eq!(target, "assistant/general_help");
             assert_eq!(reason, "llm_fallback");
+            assert_eq!(utterance.as_deref(), Some("something unrelated"));
         }
         other => panic!("expected llm dispatch, got {other:?}"),
     }

@@ -134,6 +134,7 @@ impl CoreRouter {
                         target: decision.target,
                         confidence: decision.confidence,
                         reason: decision.reason,
+                        utterance: Some(request.envelope.text.clone()),
                     },
                 };
             }
@@ -183,6 +184,7 @@ impl CoreRouter {
                                 target: answer.target,
                                 confidence: answer.confidence,
                                 reason: answer.reason,
+                                utterance: Some(request.envelope.text.clone()),
                             },
                         };
                     }
