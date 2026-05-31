@@ -9,8 +9,8 @@ use futures::executor::block_on;
 
 use super::generated_bindings::exports::greentic::fast2flow::routing_hook::Guest;
 use super::generated_bindings::greentic::fast2flow::routing_types::{
-    Fast2flowHookInV1 as WitIn, Fast2flowHookOutV1 as WitOut, MessageEnvelope as WitEnvelope,
-    RoutingDirective as WitDirective,
+    DispatchPayload as WitDispatchPayload, Fast2flowHookInV1 as WitIn,
+    Fast2flowHookOutV1 as WitOut, MessageEnvelope as WitEnvelope, RoutingDirective as WitDirective,
 };
 use super::handle_hook_from_mounts;
 
@@ -96,7 +96,13 @@ fn map_out(output: Fast2FlowHookOutV1) -> WitOut {
             target,
             confidence,
             reason,
-        } => WitDirective::Dispatch((target, confidence, reason)),
+            utterance,
+        } => WitDirective::Dispatch(WitDispatchPayload {
+            target,
+            confidence,
+            reason,
+            utterance,
+        }),
         RoutingDirective::Respond { message } => WitDirective::Respond(message),
         RoutingDirective::Deny { reason } => WitDirective::Deny(reason),
     };

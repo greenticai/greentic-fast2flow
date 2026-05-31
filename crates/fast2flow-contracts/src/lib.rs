@@ -71,6 +71,13 @@ pub enum RoutingDirective {
         target: String,
         confidence: f32,
         reason: String,
+        /// Phase M2.2: the original user text (pre-trim) that produced
+        /// this dispatch, echoed for downstream slot extraction. `None`
+        /// for legacy producers and on the WIT side when the host
+        /// passes a directive that omits utterance — consumers MUST
+        /// tolerate absence.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        utterance: Option<String>,
     },
     Respond {
         message: String,
@@ -315,5 +322,61 @@ mod tests {
         let req: Fast2FlowHookInV1 = serde_json::from_str(payload).expect("legacy parse");
         assert!(req.messaging_endpoint_id.is_none());
         assert_eq!(req.effective_scope(), "acme:legal");
+    }
+
+    #[test]
+    fn dispatch_directive_round_trips_utterance() {
+        let directive = RoutingDirective::Dispatch {
+            target: "legal/nda_flow".to_string(),
+            confidence: 0.87,
+            reason: "deterministic".to_string(),
+            utterance: Some("NDA between Acme and us by Friday".to_string()),
+        };
+        let json = serde_json::to_string(&directive).expect("serialize");
+        assert!(
+            json.contains("\"utterance\":\"NDA between Acme and us by Friday\""),
+            "utterance must appear in serialized form: {json}"
+        );
+        let parsed: RoutingDirective = serde_json::from_str(&json).expect("round-trip");
+        assert_eq!(parsed, directive);
+    }
+
+    #[test]
+    fn dispatch_directive_omits_utterance_when_none() {
+        // skip_serializing_if keeps the wire format backwards-compatible
+        // for producers that never populate utterance.
+        let directive = RoutingDirective::Dispatch {
+            target: "support/refund_flow".to_string(),
+            confidence: 0.91,
+            reason: "deterministic".to_string(),
+            utterance: None,
+        };
+        let json = serde_json::to_string(&directive).expect("serialize");
+        assert!(
+            !json.contains("utterance"),
+            "utterance key must be skipped when None: {json}"
+        );
+    }
+
+    #[test]
+    fn legacy_dispatch_json_without_utterance_deserializes() {
+        // Historical wire format (M1 and earlier) carried only target /
+        // confidence / reason. M2.2 consumers must still parse it.
+        let payload = r#"{
+            "type": "dispatch",
+            "target": "support/refund_flow",
+            "confidence": 0.91,
+            "reason": "deterministic"
+        }"#;
+        let directive: RoutingDirective = serde_json::from_str(payload).expect("legacy parse");
+        match directive {
+            RoutingDirective::Dispatch {
+                utterance, target, ..
+            } => {
+                assert!(utterance.is_none(), "default to None on legacy payload");
+                assert_eq!(target, "support/refund_flow");
+            }
+            other => panic!("expected dispatch, got {other:?}"),
+        }
     }
 }
