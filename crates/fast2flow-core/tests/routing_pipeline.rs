@@ -26,9 +26,6 @@ async fn deterministic_routing_dispatches_refund_flow() {
             target, utterance, ..
         } => {
             assert_eq!(target, "support/refund_flow");
-            // M2.2: the original user text is echoed verbatim on the
-            // Dispatch so the destination flow's slot extractor can read
-            // it without a session round-trip.
             assert_eq!(utterance.as_deref(), Some("refund please"));
         }
         other => panic!("expected dispatch, got {other:?}"),
@@ -67,8 +64,6 @@ async fn llm_fallback_dispatches_when_deterministic_misses() {
         } => {
             assert_eq!(target, "assistant/general_help");
             assert_eq!(reason, "llm_fallback");
-            // M2.2: the LLM-fallback construction site also echoes the
-            // original utterance through to downstream nodes.
             assert_eq!(utterance.as_deref(), Some("something unrelated"));
         }
         other => panic!("expected llm dispatch, got {other:?}"),

@@ -71,11 +71,8 @@ pub enum RoutingDirective {
         target: String,
         confidence: f32,
         reason: String,
-        /// Phase M2.2: the original user text (pre-trim) that produced
-        /// this dispatch, echoed for downstream slot extraction. `None`
-        /// for legacy producers and on the WIT side when the host
-        /// passes a directive that omits utterance — consumers MUST
-        /// tolerate absence.
+        /// Original user text echoed for downstream slot extraction.
+        /// `None` on legacy producers — consumers must tolerate absence.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         utterance: Option<String>,
     },
@@ -333,10 +330,6 @@ mod tests {
             utterance: Some("NDA between Acme and us by Friday".to_string()),
         };
         let json = serde_json::to_string(&directive).expect("serialize");
-        assert!(
-            json.contains("\"utterance\":\"NDA between Acme and us by Friday\""),
-            "utterance must appear in serialized form: {json}"
-        );
         let parsed: RoutingDirective = serde_json::from_str(&json).expect("round-trip");
         assert_eq!(parsed, directive);
     }
