@@ -7,7 +7,9 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use fast2flow_contracts::{endpoint_scope, FlowDoc, IndexManifestV1, MessagingEndpointId};
+use fast2flow_contracts::{
+    endpoint_scope, FlowDoc, IndexManifest as RuntimeIndexManifest, MessagingEndpointId,
+};
 use tracing::{info, warn};
 
 use crate::index::{build_index_manifest, generate_intents_md, IndexManifest};
@@ -88,13 +90,13 @@ pub fn reindex_on_pack_change(
 /// Phase M1: result of indexing a bundle for a messaging endpoint.
 ///
 /// Distinct from [`IndexResult`] because the endpoint flow emits the lean
-/// runtime [`IndexManifestV1`] (consumed by `MountedIndexLookup::load`),
+/// runtime [`RuntimeIndexManifest`] (consumed by `MountedIndexLookup::load`),
 /// not the heavy TF-IDF [`IndexManifest`] used by the legacy doc-gen path.
 #[derive(Debug)]
 pub struct EndpointIndexResult {
     /// The runtime-loadable manifest. `entries` is empty when the corpus
     /// is empty (which is itself written to disk to evict stale routes).
-    pub manifest: IndexManifestV1,
+    pub manifest: RuntimeIndexManifest,
     /// `<indexes_root>/endpoint:{endpoint_id}/index.json`.
     pub index_path: PathBuf,
     /// `<indexes_root>/endpoint:{endpoint_id}/intents.md` when generated.
@@ -574,7 +576,7 @@ tags:
     fn endpoint_index_loads_via_load_latest_round_trip() {
         // F2 regression: end-to-end round trip — write via the hook,
         // load via the runtime-side primitive, prove the lean
-        // `IndexManifestV1` shape is what's on disk.
+        // runtime index shape is what's on disk.
         let bundle_dir = tempdir().unwrap();
         let indexes_root = tempdir().unwrap();
         write_flow(bundle_dir.path(), "pack-z", "z-flow", "Z Flow", "z-tag");
