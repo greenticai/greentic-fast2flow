@@ -6,8 +6,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use fast2flow_contracts::{
-    Candidate, FlowDoc, IndexEntryV1, IndexEntryV2, IndexManifestV1, IndexManifestV2,
-    validate_scope,
+    validate_scope, Candidate, FlowDoc, IndexEntryV1, IndexEntryV2, IndexManifestV1,
+    IndexManifestV2,
 };
 use tracing::{debug, info};
 
