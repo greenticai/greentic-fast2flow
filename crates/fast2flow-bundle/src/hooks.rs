@@ -7,7 +7,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use fast2flow_contracts::{endpoint_scope, FlowDoc, IndexManifestV1};
+use fast2flow_contracts::{endpoint_scope, FlowDoc, IndexManifestV1, MessagingEndpointId};
 use tracing::{info, warn};
 
 use crate::index::{build_index_manifest, generate_intents_md, IndexManifest};
@@ -119,7 +119,7 @@ pub struct EndpointIndexResult {
 pub fn index_bundle_for_endpoint(
     bundle_path: &Path,
     indexes_root: &Path,
-    endpoint_id: &str,
+    endpoint_id: &MessagingEndpointId,
     linked_bundle_pack_ids: &HashSet<String>,
     now_unix_ms: u64,
     generate_docs: bool,
@@ -140,7 +140,7 @@ pub fn index_bundle_for_endpoint(
 pub fn reindex_for_endpoint_on_pack_change(
     bundle_path: &Path,
     indexes_root: &Path,
-    endpoint_id: &str,
+    endpoint_id: &MessagingEndpointId,
     linked_bundle_pack_ids: &HashSet<String>,
     now_unix_ms: u64,
 ) -> Result<EndpointIndexResult> {
@@ -158,7 +158,7 @@ pub fn reindex_for_endpoint_on_pack_change(
 fn index_bundle_for_endpoint_internal(
     bundle_path: &Path,
     indexes_root: &Path,
-    endpoint_id: &str,
+    endpoint_id: &MessagingEndpointId,
     linked_bundle_pack_ids: &HashSet<String>,
     now_unix_ms: u64,
     generate_docs: bool,
@@ -218,7 +218,7 @@ fn index_bundle_for_endpoint_internal(
         // tenant/team-flavoured generator by passing the endpoint id in both
         // slots so the header reads `endpoint:<id>:<id>`. A dedicated
         // generator is out of scope for M1.3.
-        let intents_md = generate_intents_md(&entries, endpoint_id, endpoint_id);
+        let intents_md = generate_intents_md(&entries, endpoint_id.as_str(), endpoint_id.as_str());
         let path = scope_dir.join("intents.md");
         std::fs::write(&path, &intents_md)
             .with_context(|| format!("Failed to write {}", path.display()))?;
@@ -350,6 +350,10 @@ mod tests {
     use std::fs;
     use tempfile::tempdir;
 
+    fn eid(s: &str) -> MessagingEndpointId {
+        MessagingEndpointId::new(s).unwrap()
+    }
+
     #[test]
     fn test_index_bundle_after_setup() {
         let bundle_dir = tempdir().unwrap();
@@ -439,7 +443,7 @@ tags:
         let result = index_bundle_for_endpoint(
             bundle_dir.path(),
             indexes_root.path(),
-            "teams-legal",
+            &eid("teams-legal"),
             &linked,
             0,
             false,
@@ -477,7 +481,7 @@ tags:
         let result = index_bundle_for_endpoint(
             bundle_dir.path(),
             indexes_root.path(),
-            "teams-empty",
+            &eid("teams-empty"),
             &linked,
             0,
             false,
@@ -512,7 +516,7 @@ tags:
         let seeded = index_bundle_for_endpoint(
             bundle_dir.path(),
             indexes_root.path(),
-            "teams-x",
+            &eid("teams-x"),
             &linked,
             0,
             false,
@@ -528,7 +532,7 @@ tags:
         let evicted = reindex_for_endpoint_on_pack_change(
             bundle_dir.path(),
             indexes_root.path(),
-            "teams-x",
+            &eid("teams-x"),
             &HashSet::new(),
             0,
         )
@@ -554,7 +558,7 @@ tags:
         let result = reindex_for_endpoint_on_pack_change(
             bundle_dir.path(),
             indexes_root.path(),
-            "teams-x",
+            &eid("teams-x"),
             &linked,
             0,
         )
@@ -580,7 +584,7 @@ tags:
         let _ = index_bundle_for_endpoint(
             bundle_dir.path(),
             indexes_root.path(),
-            "teams-z",
+            &eid("teams-z"),
             &linked,
             0,
             false,
@@ -595,5 +599,53 @@ tags:
         assert_eq!(manifest.entries[0].flow_id, "z-flow");
         assert_eq!(manifest.entries[0].pack_id, "pack-z");
         assert_eq!(manifest.entries[0].target, "pack-z/z-flow");
+    }
+
+    // -------------------------------------------------------------------
+    // M1.3: malicious endpoint_id integration tests
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn malicious_endpoint_id_path_traversal_rejected_no_dirs_created() {
+        let bundle_dir = tempdir().unwrap();
+        let indexes_root = tempdir().unwrap();
+        write_flow(bundle_dir.path(), "pack", "flow", "Title", "tag");
+        let mut linked = HashSet::new();
+        linked.insert("pack".to_string());
+
+        // These must all fail at the MessagingEndpointId constructor boundary.
+        let malicious_ids = [
+            "../../../etc/passwd",
+            "foo/bar",
+            "..",
+            "",
+            "  spaces  ",
+            "\u{202E}evil",
+            "foo\0bar",
+        ];
+
+        for bad_id in &malicious_ids {
+            assert!(
+                MessagingEndpointId::new(*bad_id).is_err(),
+                "must reject: {bad_id:?}"
+            );
+        }
+
+        // Verify no directories were created under indexes_root.
+        let entries: Vec<_> = fs::read_dir(indexes_root.path()).unwrap().collect();
+        assert!(
+            entries.is_empty(),
+            "no directories must be created for rejected endpoint ids"
+        );
+    }
+
+    #[test]
+    fn malicious_endpoint_id_dotdot_cannot_escape_indexes_root() {
+        // Even if someone manually constructed an endpoint_id with "..",
+        // the newtype rejects it. This test documents the trust boundary.
+        assert!(MessagingEndpointId::new("..").is_err());
+        assert!(MessagingEndpointId::new("...").is_err());
+        assert!(MessagingEndpointId::new("../").is_err());
+        assert!(MessagingEndpointId::new("a/../b").is_err());
     }
 }

@@ -1,6 +1,174 @@
 use std::borrow::Cow;
+use std::fmt;
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+// ---------------------------------------------------------------------------
+// MessagingEndpointId — validating newtype (M1.3)
+// ---------------------------------------------------------------------------
+
+/// Error returned when constructing a [`MessagingEndpointId`] from an invalid
+/// string.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum EndpointIdError {
+    #[error("endpoint id must not be empty")]
+    Empty,
+    #[error("endpoint id exceeds 255 characters")]
+    TooLong,
+    #[error("endpoint id contains invalid character: {0:?}")]
+    InvalidCharacter(char),
+    #[error("endpoint id has invalid shape (leading/trailing dot or hyphen, or consecutive dots)")]
+    InvalidShape,
+}
+
+/// A validated messaging endpoint identifier.
+///
+/// Predicate: `^[a-zA-Z0-9]([a-zA-Z0-9._-]{0,253}[a-zA-Z0-9])?$`
+/// (DNS-label-like, 1-255 chars). Rejects empty, `/`, `..`, control chars,
+/// whitespace, RTL marks, leading/trailing dots/hyphens.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[serde(transparent)]
+pub struct MessagingEndpointId(String);
+
+impl MessagingEndpointId {
+    /// Construct a new `MessagingEndpointId`, validating the input.
+    pub fn new(id: impl Into<String>) -> Result<Self, EndpointIdError> {
+        let id = id.into();
+        validate_endpoint_id(&id)?;
+        Ok(Self(id))
+    }
+
+    /// Access the inner string.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+fn validate_endpoint_id(id: &str) -> Result<(), EndpointIdError> {
+    if id.is_empty() {
+        return Err(EndpointIdError::Empty);
+    }
+    if id.len() > 255 {
+        return Err(EndpointIdError::TooLong);
+    }
+
+    // Every character must be alphanumeric, '.', '_', or '-'.
+    for ch in id.chars() {
+        if !(ch.is_ascii_alphanumeric() || ch == '.' || ch == '_' || ch == '-') {
+            return Err(EndpointIdError::InvalidCharacter(ch));
+        }
+    }
+
+    // First and last characters must be alphanumeric.
+    let first = id.as_bytes()[0];
+    let last = id.as_bytes()[id.len() - 1];
+    if !first.is_ascii_alphanumeric() || !last.is_ascii_alphanumeric() {
+        return Err(EndpointIdError::InvalidShape);
+    }
+
+    // Reject consecutive dots (catches ".." as a substring).
+    if id.contains("..") {
+        return Err(EndpointIdError::InvalidShape);
+    }
+
+    Ok(())
+}
+
+impl TryFrom<String> for MessagingEndpointId {
+    type Error = EndpointIdError;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl TryFrom<&str> for MessagingEndpointId {
+    type Error = EndpointIdError;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl AsRef<str> for MessagingEndpointId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for MessagingEndpointId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for MessagingEndpointId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        MessagingEndpointId::try_from(s).map_err(serde::de::Error::custom)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Scope validation (M1.3)
+// ---------------------------------------------------------------------------
+
+/// Error returned when a scope string fails validation.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum ScopeError {
+    #[error("scope must not be empty")]
+    Empty,
+    #[error("scope exceeds 512 characters")]
+    TooLong,
+    #[error("scope has wrong shape (must be exactly `left:right` with non-empty sides)")]
+    WrongShape,
+    #[error("scope contains invalid character: {0:?}")]
+    InvalidCharacter(char),
+}
+
+/// Validate a scope string.
+///
+/// Must match `^[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+$` — exactly one colon,
+/// alphanumeric + `._-` on each side, no leading/trailing dots on either side.
+pub fn validate_scope(scope: &str) -> Result<(), ScopeError> {
+    if scope.is_empty() {
+        return Err(ScopeError::Empty);
+    }
+    if scope.len() > 512 {
+        return Err(ScopeError::TooLong);
+    }
+
+    let Some((left, right)) = scope.split_once(':') else {
+        return Err(ScopeError::WrongShape);
+    };
+
+    // Exactly one colon — if right contains another colon, reject.
+    if right.contains(':') {
+        return Err(ScopeError::WrongShape);
+    }
+
+    if left.is_empty() || right.is_empty() {
+        return Err(ScopeError::WrongShape);
+    }
+
+    for segment in [left, right] {
+        for ch in segment.chars() {
+            if !(ch.is_ascii_alphanumeric() || ch == '.' || ch == '_' || ch == '-') {
+                return Err(ScopeError::InvalidCharacter(ch));
+            }
+        }
+        // No leading/trailing dots.
+        if segment.starts_with('.') || segment.ends_with('.') {
+            return Err(ScopeError::WrongShape);
+        }
+    }
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct MessageEnvelope {
@@ -24,7 +192,7 @@ pub struct Fast2FlowHookInV1 {
     /// `scope`. When absent, `scope` is used verbatim (legacy `tenant:team`
     /// callers stay working).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub messaging_endpoint_id: Option<String>,
+    pub messaging_endpoint_id: Option<MessagingEndpointId>,
 }
 
 impl Fast2FlowHookInV1 {
@@ -39,7 +207,7 @@ impl Fast2FlowHookInV1 {
     /// `canonicalize_scope` call on every request only takes ownership when
     /// it actually has to (the `messaging_endpoint_id` arm).
     pub fn effective_scope(&self) -> Cow<'_, str> {
-        match self.messaging_endpoint_id.as_deref() {
+        match &self.messaging_endpoint_id {
             Some(id) => Cow::Owned(endpoint_scope(id)),
             None => Cow::Borrowed(&self.scope),
         }
@@ -50,8 +218,8 @@ impl Fast2FlowHookInV1 {
 ///
 /// Indexer producers + routing consumers share this helper so the
 /// `endpoint:` prefix never drifts between sides.
-pub fn endpoint_scope(endpoint_id: &str) -> String {
-    format!("endpoint:{endpoint_id}")
+pub fn endpoint_scope(id: &MessagingEndpointId) -> String {
+    format!("endpoint:{}", id.as_str())
 }
 
 pub type HookInV1 = Fast2FlowHookInV1;
@@ -294,14 +462,19 @@ mod tests {
     #[test]
     fn effective_scope_uses_endpoint_prefix_when_set() {
         let mut req = base_request("acme:legal");
-        req.messaging_endpoint_id = Some("teams-legal-bot".to_string());
+        req.messaging_endpoint_id = Some(MessagingEndpointId::new("teams-legal-bot").unwrap());
         assert_eq!(req.effective_scope(), "endpoint:teams-legal-bot");
     }
 
     #[test]
     fn endpoint_scope_helper_is_stable_prefix() {
-        assert_eq!(endpoint_scope("teams-x"), "endpoint:teams-x");
-        assert_eq!(endpoint_scope(""), "endpoint:");
+        let id = MessagingEndpointId::new("teams-x").unwrap();
+        assert_eq!(endpoint_scope(&id), "endpoint:teams-x");
+    }
+
+    #[test]
+    fn endpoint_id_rejects_empty() {
+        assert_eq!(MessagingEndpointId::new(""), Err(EndpointIdError::Empty));
     }
 
     #[test]
@@ -371,5 +544,174 @@ mod tests {
             }
             other => panic!("expected dispatch, got {other:?}"),
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // M1.3: MessagingEndpointId predicate test matrix
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn endpoint_id_valid_cases() {
+        assert!(MessagingEndpointId::new("teams-legal").is_ok());
+        assert!(MessagingEndpointId::new("a").is_ok());
+        assert!(MessagingEndpointId::new("valid.endpoint-1").is_ok());
+        assert!(MessagingEndpointId::new("A1").is_ok());
+        assert!(MessagingEndpointId::new("x_y").is_ok());
+    }
+
+    #[test]
+    fn endpoint_id_rejects_path_traversal() {
+        let err = MessagingEndpointId::new("../").unwrap_err();
+        assert_eq!(err, EndpointIdError::InvalidCharacter('/'));
+
+        let err = MessagingEndpointId::new("../../../etc/passwd").unwrap_err();
+        assert_eq!(err, EndpointIdError::InvalidCharacter('/'));
+
+        let err = MessagingEndpointId::new("foo/bar").unwrap_err();
+        assert_eq!(err, EndpointIdError::InvalidCharacter('/'));
+    }
+
+    #[test]
+    fn endpoint_id_rejects_null_byte() {
+        let err = MessagingEndpointId::new("foo\0bar").unwrap_err();
+        assert_eq!(err, EndpointIdError::InvalidCharacter('\0'));
+    }
+
+    #[test]
+    fn endpoint_id_rejects_double_dot() {
+        let err = MessagingEndpointId::new("..").unwrap_err();
+        assert_eq!(err, EndpointIdError::InvalidShape);
+
+        // Three dots: leading dot → InvalidShape
+        let err = MessagingEndpointId::new("...").unwrap_err();
+        assert_eq!(err, EndpointIdError::InvalidShape);
+    }
+
+    #[test]
+    fn endpoint_id_rejects_whitespace() {
+        let err = MessagingEndpointId::new("  spaces  ").unwrap_err();
+        assert_eq!(err, EndpointIdError::InvalidCharacter(' '));
+    }
+
+    #[test]
+    fn endpoint_id_rejects_rtl_mark() {
+        let err = MessagingEndpointId::new("\u{202E}evil").unwrap_err();
+        assert_eq!(err, EndpointIdError::InvalidCharacter('\u{202E}'));
+    }
+
+    #[test]
+    fn endpoint_id_rejects_overlong() {
+        let long = "a".repeat(256);
+        let err = MessagingEndpointId::new(long).unwrap_err();
+        assert_eq!(err, EndpointIdError::TooLong);
+    }
+
+    #[test]
+    fn endpoint_id_rejects_leading_trailing_dot_or_hyphen() {
+        assert_eq!(
+            MessagingEndpointId::new(".leading").unwrap_err(),
+            EndpointIdError::InvalidShape
+        );
+        assert_eq!(
+            MessagingEndpointId::new("trailing.").unwrap_err(),
+            EndpointIdError::InvalidShape
+        );
+        assert_eq!(
+            MessagingEndpointId::new("-leading").unwrap_err(),
+            EndpointIdError::InvalidShape
+        );
+        assert_eq!(
+            MessagingEndpointId::new("trailing-").unwrap_err(),
+            EndpointIdError::InvalidShape
+        );
+    }
+
+    #[test]
+    fn endpoint_id_max_length_accepted() {
+        // 255 chars: alnum first + 253 inner + alnum last = 255
+        let id = format!("a{}b", "x".repeat(253));
+        assert_eq!(id.len(), 255);
+        assert!(MessagingEndpointId::new(id).is_ok());
+    }
+
+    #[test]
+    fn endpoint_id_serde_round_trip() {
+        let id = MessagingEndpointId::new("teams-legal").unwrap();
+        let json = serde_json::to_string(&id).unwrap();
+        assert_eq!(json, "\"teams-legal\"");
+        let parsed: MessagingEndpointId = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, id);
+    }
+
+    #[test]
+    fn endpoint_id_serde_rejects_invalid() {
+        let result = serde_json::from_str::<MessagingEndpointId>("\"../bad\"");
+        assert!(result.is_err());
+    }
+
+    // -----------------------------------------------------------------------
+    // M1.3: validate_scope predicate test matrix
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn scope_valid_cases() {
+        assert!(validate_scope("tenant-a:team-1").is_ok());
+        assert!(validate_scope("endpoint:foo").is_ok());
+        assert!(validate_scope("a:b").is_ok());
+        assert!(validate_scope("my_tenant:my_team").is_ok());
+    }
+
+    #[test]
+    fn scope_rejects_empty() {
+        assert_eq!(validate_scope(""), Err(ScopeError::Empty));
+    }
+
+    #[test]
+    fn scope_rejects_empty_right_side() {
+        assert_eq!(validate_scope("endpoint:"), Err(ScopeError::WrongShape));
+    }
+
+    #[test]
+    fn scope_rejects_empty_left_side() {
+        assert_eq!(validate_scope(":team"), Err(ScopeError::WrongShape));
+    }
+
+    #[test]
+    fn scope_rejects_multi_colon() {
+        assert_eq!(
+            validate_scope("tenant:team:extra"),
+            Err(ScopeError::WrongShape)
+        );
+    }
+
+    #[test]
+    fn scope_rejects_no_colon() {
+        // No colon → WrongShape (checked before character validation).
+        assert_eq!(validate_scope("../etc/passwd"), Err(ScopeError::WrongShape));
+        // With a colon but slash in a segment → InvalidCharacter.
+        assert_eq!(
+            validate_scope("../etc:passwd"),
+            Err(ScopeError::InvalidCharacter('/'))
+        );
+    }
+
+    #[test]
+    fn scope_rejects_slash() {
+        assert_eq!(
+            validate_scope("foo/bar:baz"),
+            Err(ScopeError::InvalidCharacter('/'))
+        );
+    }
+
+    #[test]
+    fn scope_rejects_leading_dot_in_segment() {
+        assert_eq!(validate_scope(".hidden:team"), Err(ScopeError::WrongShape));
+        assert_eq!(validate_scope("tenant:.team"), Err(ScopeError::WrongShape));
+    }
+
+    #[test]
+    fn scope_rejects_overlong() {
+        let long = format!("{}:{}", "a".repeat(300), "b".repeat(300));
+        assert_eq!(validate_scope(&long), Err(ScopeError::TooLong));
     }
 }

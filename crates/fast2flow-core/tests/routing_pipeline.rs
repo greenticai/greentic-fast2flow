@@ -13,12 +13,15 @@ use fast2flow_strategy_phase1::Phase1DeterministicStrategy;
 
 #[tokio::test]
 async fn deterministic_routing_dispatches_refund_flow() {
-    let store = build_test_index("tenant-a", fixture_flows());
+    let store = build_test_index("tenant-a:default", fixture_flows());
     let lookup = TestLookup { store };
     let router = default_router(None, RouterConfig::default());
 
     let output = router
-        .route(request("tenant-a", "refund please", false, 200), &lookup)
+        .route(
+            request("tenant-a:default", "refund please", false, 200),
+            &lookup,
+        )
         .await;
 
     match output.directive {
@@ -34,7 +37,7 @@ async fn deterministic_routing_dispatches_refund_flow() {
 
 #[tokio::test]
 async fn llm_fallback_dispatches_when_deterministic_misses() {
-    let store = build_test_index("tenant-a", fixture_flows());
+    let store = build_test_index("tenant-a:default", fixture_flows());
     let lookup = TestLookup { store };
     let llm = Arc::new(MockLlmProvider::dispatch(
         "assistant/general_help",
@@ -50,7 +53,7 @@ async fn llm_fallback_dispatches_when_deterministic_misses() {
 
     let output = router
         .route(
-            request("tenant-a", "something unrelated", false, 200),
+            request("tenant-a:default", "something unrelated", false, 200),
             &lookup,
         )
         .await;
@@ -72,7 +75,7 @@ async fn llm_fallback_dispatches_when_deterministic_misses() {
 
 #[tokio::test]
 async fn llm_timeout_fails_open_to_continue() {
-    let store = build_test_index("tenant-a", fixture_flows());
+    let store = build_test_index("tenant-a:default", fixture_flows());
     let lookup = TestLookup { store };
     let llm = Arc::new(MockLlmProvider::timeout());
     let config = RouterConfig {
@@ -83,7 +86,10 @@ async fn llm_timeout_fails_open_to_continue() {
     let router = default_router(Some(llm), config);
 
     let output = router
-        .route(request("tenant-a", "need help now", false, 30), &lookup)
+        .route(
+            request("tenant-a:default", "need help now", false, 30),
+            &lookup,
+        )
         .await;
 
     assert!(matches!(output.directive, RoutingDirective::Continue));
@@ -91,18 +97,21 @@ async fn llm_timeout_fails_open_to_continue() {
 
 #[tokio::test]
 async fn filter_deny_short_circuits_with_deny_directive() {
-    let store = build_test_index("tenant-a", fixture_flows());
+    let store = build_test_index("tenant-a:default", fixture_flows());
     let lookup = TestLookup { store };
 
     let strategy = Arc::new(Phase1DeterministicStrategy);
     let filter = Arc::new(DefaultHookFilter {
-        deny_scopes: vec!["tenant-a".to_string()],
+        deny_scopes: vec!["tenant-a:default".to_string()],
         ..DefaultHookFilter::default()
     });
     let router = CoreRouter::new(strategy, vec![filter], None, RouterConfig::default());
 
     let output = router
-        .route(request("tenant-a", "refund please", false, 200), &lookup)
+        .route(
+            request("tenant-a:default", "refund please", false, 200),
+            &lookup,
+        )
         .await;
 
     match output.directive {
@@ -115,7 +124,7 @@ async fn filter_deny_short_circuits_with_deny_directive() {
 
 #[tokio::test]
 async fn filter_respond_short_circuits_with_respond_directive() {
-    let store = build_test_index("tenant-a", fixture_flows());
+    let store = build_test_index("tenant-a:default", fixture_flows());
     let lookup = TestLookup { store };
 
     let strategy = Arc::new(Phase1DeterministicStrategy);
@@ -131,7 +140,12 @@ async fn filter_respond_short_circuits_with_respond_directive() {
 
     let output = router
         .route(
-            request("tenant-a", "what are your business hours?", false, 200),
+            request(
+                "tenant-a:default",
+                "what are your business hours?",
+                false,
+                200,
+            ),
             &lookup,
         )
         .await;
@@ -146,12 +160,15 @@ async fn filter_respond_short_circuits_with_respond_directive() {
 
 #[tokio::test]
 async fn session_active_filter_returns_continue() {
-    let store = build_test_index("tenant-a", fixture_flows());
+    let store = build_test_index("tenant-a:default", fixture_flows());
     let lookup = TestLookup { store };
     let router = default_router(None, RouterConfig::default());
 
     let output = router
-        .route(request("tenant-a", "refund please", true, 200), &lookup)
+        .route(
+            request("tenant-a:default", "refund please", true, 200),
+            &lookup,
+        )
         .await;
 
     assert!(matches!(output.directive, RoutingDirective::Continue));
@@ -159,12 +176,15 @@ async fn session_active_filter_returns_continue() {
 
 #[tokio::test]
 async fn zero_time_budget_returns_continue() {
-    let store = build_test_index("tenant-a", fixture_flows());
+    let store = build_test_index("tenant-a:default", fixture_flows());
     let lookup = TestLookup { store };
     let router = default_router(None, RouterConfig::default());
 
     let output = router
-        .route(request("tenant-a", "refund please", false, 0), &lookup)
+        .route(
+            request("tenant-a:default", "refund please", false, 0),
+            &lookup,
+        )
         .await;
 
     assert!(matches!(output.directive, RoutingDirective::Continue));

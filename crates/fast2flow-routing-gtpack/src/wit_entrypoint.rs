@@ -2,7 +2,8 @@ use std::sync::Arc;
 use std::sync::OnceLock;
 
 use fast2flow_contracts::{
-    Fast2FlowHookInV1, Fast2FlowHookOutV1, MessageEnvelope, RoutingDirective,
+    validate_scope, Fast2FlowHookInV1, Fast2FlowHookOutV1, MessageEnvelope, MessagingEndpointId,
+    RoutingDirective,
 };
 use fast2flow_core::CoreRouter;
 use futures::executor::block_on;
@@ -59,7 +60,30 @@ pub struct Component;
 
 impl Guest for Component {
     fn handle_hook(request: WitIn) -> WitOut {
-        let request = map_in(request);
+        // M1.3: validate at the trust boundary. If the endpoint_id or scope
+        // is malformed, fail closed — return Continue so no routing occurs.
+        let endpoint_id = match request.messaging_endpoint_id.as_deref() {
+            Some(raw) => match MessagingEndpointId::try_from(raw) {
+                Ok(id) => Some(id),
+                Err(_) => {
+                    return WitOut {
+                        directive: WitDirective::Continue,
+                    };
+                }
+            },
+            None => None,
+        };
+
+        // Validate scope when no endpoint_id overrides it.
+        if endpoint_id.is_none() && !request.scope.is_empty() {
+            if validate_scope(&request.scope).is_err() {
+                return WitOut {
+                    directive: WitDirective::Continue,
+                };
+            }
+        }
+
+        let request = map_in_validated(request, endpoint_id);
         let output = ROUTING_RUNTIME
             .get()
             .map(|runtime| runtime.route(request))
@@ -70,7 +94,7 @@ impl Guest for Component {
     }
 }
 
-fn map_in(request: WitIn) -> Fast2FlowHookInV1 {
+fn map_in_validated(request: WitIn, endpoint_id: Option<MessagingEndpointId>) -> Fast2FlowHookInV1 {
     let envelope = request.envelope;
     Fast2FlowHookInV1 {
         scope: request.scope,
@@ -85,7 +109,7 @@ fn map_in(request: WitIn) -> Fast2FlowHookInV1 {
         registry_path: request.registry_path,
         indexes_path: request.indexes_path,
         now_unix_ms: request.now_unix_ms,
-        messaging_endpoint_id: request.messaging_endpoint_id,
+        messaging_endpoint_id: endpoint_id,
     }
 }
 
