@@ -1,13 +1,84 @@
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use anyhow::{anyhow, Context, Result};
-use fast2flow_contracts::{
-    Candidate, FlowDoc, IndexEntryV1, IndexEntryV2, IndexManifestV1, IndexManifestV2,
-};
+use anyhow::{Context, Result};
+use fast2flow_contracts::{validate_scope, Candidate, FlowDoc, IndexEntryV1, IndexManifestV1};
 use tracing::{debug, info};
+
+/// Defense-in-depth: resolve `root.join(scope)` and verify the result is
+/// contained within `root`. Rejects path-traversal attempts even if the
+/// scope string somehow bypasses higher-level validation.
+///
+/// The function first validates `scope` via [`validate_scope`], then ensures
+/// the resolved path does not escape `root`.
+pub fn normalize_under_root(root: &Path, scope: &str) -> io::Result<PathBuf> {
+    validate_scope(scope).map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+
+    // Canonicalize root (must exist).
+    let canonical_root =
+        fs::canonicalize(root).map_err(|e| io::Error::new(io::ErrorKind::NotFound, e))?;
+
+    let joined = canonical_root.join(scope);
+
+    // The scope dir may not exist yet (write path). Walk up to find an
+    // existing ancestor, canonicalize that, then re-append the remainder.
+    let resolved = if joined.exists() {
+        fs::canonicalize(&joined)?
+    } else {
+        // Find the deepest existing ancestor.
+        let mut ancestor = joined.as_path();
+        let mut suffix_parts = Vec::new();
+        loop {
+            if let Some(parent) = ancestor.parent() {
+                if parent.exists() {
+                    // Collect the component we peeled off.
+                    if let Some(file_name) = ancestor.file_name() {
+                        suffix_parts.push(file_name.to_owned());
+                    }
+                    ancestor = parent;
+                    // Canonicalize the existing ancestor.
+                    let canonical_ancestor = fs::canonicalize(ancestor)?;
+                    // Re-append the non-existent tail.
+                    let mut result = canonical_ancestor;
+                    for part in suffix_parts.into_iter().rev() {
+                        result = result.join(part);
+                    }
+                    return if result.starts_with(&canonical_root) {
+                        Ok(result)
+                    } else {
+                        Err(io::Error::new(
+                            io::ErrorKind::PermissionDenied,
+                            "scope path escapes root",
+                        ))
+                    };
+                }
+                // Parent doesn't exist either — keep walking up.
+                if let Some(file_name) = ancestor.file_name() {
+                    suffix_parts.push(file_name.to_owned());
+                }
+                ancestor = parent;
+            } else {
+                // Reached filesystem root without finding an existing dir.
+                return Err(io::Error::new(
+                    io::ErrorKind::NotFound,
+                    "no existing ancestor for scope path",
+                ));
+            }
+        }
+    };
+
+    if resolved.starts_with(&canonical_root) {
+        Ok(resolved)
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "scope path escapes root",
+        ))
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct IndexStore {
@@ -138,7 +209,8 @@ pub fn build_index(
 }
 
 pub fn load_latest(indexes_root: &Path, scope: &str) -> Result<IndexStore> {
-    let scope_dir = indexes_root.join(scope);
+    let scope_dir = normalize_under_root(indexes_root, scope)
+        .with_context(|| format!("scope {scope:?} failed path validation"))?;
     let latest_path = scope_dir.join("latest");
     let latest_name = fs::read_to_string(&latest_path)
         .with_context(|| format!("failed reading {}", latest_path.display()))?
@@ -160,7 +232,11 @@ pub fn load_latest(indexes_root: &Path, scope: &str) -> Result<IndexStore> {
     Ok(IndexStore::from_manifest(manifest))
 }
 
-fn write_manifest(indexes_root: &Path, scope: &str, manifest: &IndexManifestV2) -> Result<()> {
+fn write_manifest(indexes_root: &Path, scope: &str, manifest: &IndexManifestV1) -> Result<()> {
+    // Validate scope before joining to prevent path traversal on create_dir_all.
+    validate_scope(scope)
+        .map_err(|e| anyhow::anyhow!("scope validation failed: {e}"))
+        .with_context(|| format!("scope {scope:?} is invalid"))?;
     let scope_dir = indexes_root.join(scope);
     fs::create_dir_all(&scope_dir)
         .with_context(|| format!("failed creating {}", scope_dir.display()))?;
