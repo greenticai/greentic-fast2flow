@@ -554,6 +554,7 @@ version = "1.1.0-dev.0"
 dependencies = [
  "serde",
  "serde_json",
+ "thiserror",
 ]
 
 [[package]]
@@ -994,9 +995,9 @@ dependencies = [
 
 [[package]]
 name = "greentic-types"
-version = "1.1.0-dev.26640937120"
+version = "1.1.0-dev.26731975668"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e20c2f618acd989e2fe33e42969f8fc36985cf4ccf85d30329c50741c674187f"
+checksum = "1fb312c75713c0f2cb24bb095fc0c5dcef211b75d973c964723a233752c7dbb1"
 dependencies = [
  "anyhow",
  "blake3",
@@ -1024,9 +1025,9 @@ dependencies = [
 
 [[package]]
 name = "greentic-types-macros"
-version = "1.1.0-dev.26640937120"
+version = "1.1.0-dev.26731975668"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd5b60b7ee7009ffb58575d7217add7d756986733f60a17bea67757767230db1"
+checksum = "c3dbaa92f3000685de0c152e2a5d874b690e5124da2e869e21dc4be578b2c787"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -2,15 +2,15 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use fast2flow_contracts::{
     endpoint_scope, ChannelPolicyOverrideV1, Fast2FlowHookInV1, FlowDoc, MessageEnvelope,
-    PolicyRuleV1, PolicyStageV1, ProviderPolicyOverrideV1, RespondRuleV1, RoutingDirective,
-    RoutingPolicyV1, ScopePolicyOverrideV1, TextMatchModeV1,
+    MessagingEndpointId, PolicyRuleV1, PolicyStageV1, ProviderPolicyOverrideV1, RespondRuleV1,
+    RoutingDirective, RoutingPolicyV1, ScopePolicyOverrideV1, TextMatchModeV1,
 };
 use fast2flow_indexer::build_index;
 use fast2flow_routing_gtpack::{load_policy_from_path, HostRuntime, RouterBootstrapConfig};
 
 #[tokio::test]
 async fn scope_override_can_tighten_confidence_threshold() {
-    let scope = "tenant-a";
+    let scope = "tenant-a:default";
     let indexes_root = temp_indexes_dir();
     seed_refund_index(scope, &indexes_root);
 
@@ -48,7 +48,7 @@ async fn scope_override_can_tighten_confidence_threshold() {
 
 #[tokio::test]
 async fn channel_override_can_force_respond() {
-    let scope = "tenant-a";
+    let scope = "tenant-a:default";
     let indexes_root = temp_indexes_dir();
     seed_refund_index(scope, &indexes_root);
 
@@ -132,7 +132,7 @@ async fn load_policy_from_path_parses_valid_json() {
 
 #[tokio::test]
 async fn route_with_trace_reports_policy_overwrites() {
-    let scope = "tenant-a";
+    let scope = "tenant-a:default";
     let indexes_root = temp_indexes_dir();
     seed_refund_index(scope, &indexes_root);
 
@@ -196,7 +196,7 @@ async fn route_with_trace_reports_policy_overwrites() {
 
 #[tokio::test]
 async fn stage_order_changes_effective_precedence() {
-    let scope = "tenant-a";
+    let scope = "tenant-a:default";
     let indexes_root = temp_indexes_dir();
     seed_refund_index(scope, &indexes_root);
 
@@ -256,7 +256,7 @@ async fn stage_order_changes_effective_precedence() {
 
 #[tokio::test]
 async fn higher_priority_override_wins_within_stage() {
-    let scope = "tenant-a";
+    let scope = "tenant-a:default";
     let indexes_root = temp_indexes_dir();
     seed_refund_index(scope, &indexes_root);
 
@@ -387,9 +387,9 @@ async fn scope_overrides_match_effective_scope_when_endpoint_set() {
     // Test: seed a scope_override keyed on `endpoint:teams-legal-bot` and
     // a request with a deliberately stale `scope`. The override must
     // apply, proving the resolver saw the canonical effective scope.
-    let endpoint_id = "teams-legal-bot";
+    let endpoint_id = MessagingEndpointId::new("teams-legal-bot").unwrap();
     let indexes_root = temp_indexes_dir();
-    seed_refund_index(&endpoint_scope(endpoint_id), &indexes_root);
+    seed_refund_index(&endpoint_scope(&endpoint_id), &indexes_root);
 
     let policy = RoutingPolicyV1 {
         stage_order: vec![PolicyStageV1::Scope],
@@ -402,7 +402,7 @@ async fn scope_overrides_match_effective_scope_when_endpoint_set() {
             id: Some("legal-loose".to_string()),
             priority: 0,
             // Keyed on the canonical (post-canonicalize) scope key.
-            scope: endpoint_scope(endpoint_id),
+            scope: endpoint_scope(&endpoint_id),
             rules: PolicyRuleV1 {
                 min_confidence: Some(0.1),
                 ..PolicyRuleV1::default()
@@ -418,11 +418,11 @@ async fn scope_overrides_match_effective_scope_when_endpoint_set() {
             .expect("runtime should boot");
 
     let mut req = request(
-        "stale:tenant:scope",
+        "stale-tenant:scope",
         "refund please",
         indexes_root.as_path(),
     );
-    req.messaging_endpoint_id = Some(endpoint_id.to_string());
+    req.messaging_endpoint_id = Some(endpoint_id);
 
     let (output, trace) = runtime.route_from_mounts_with_trace(req).await;
     match output.directive {

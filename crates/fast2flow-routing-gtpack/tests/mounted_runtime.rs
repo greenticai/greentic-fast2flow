@@ -1,7 +1,9 @@
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use fast2flow_contracts::{Fast2FlowHookInV1, FlowDoc, MessageEnvelope, RoutingDirective};
+use fast2flow_contracts::{
+    Fast2FlowHookInV1, FlowDoc, MessageEnvelope, MessagingEndpointId, RoutingDirective,
+};
 use fast2flow_core::{CoreRouter, RouterConfig};
 use fast2flow_hooks::DefaultHookFilter;
 use fast2flow_indexer::build_index;
@@ -10,7 +12,7 @@ use fast2flow_strategy_phase1::Phase1DeterministicStrategy;
 
 #[tokio::test]
 async fn handle_hook_from_mounts_dispatches_for_refund() {
-    let scope = "tenant-a";
+    let scope = "tenant-a:default";
     let indexes_root = temp_indexes_dir();
     let flows = vec![FlowDoc {
         id: "refund_flow".to_string(),
@@ -69,7 +71,7 @@ async fn handle_hook_from_mounts_fails_open_when_index_missing() {
     let output = handle_hook_from_mounts(
         &router,
         Fast2FlowHookInV1 {
-            scope: "tenant-missing".to_string(),
+            scope: "tenant-missing:default".to_string(),
             envelope: MessageEnvelope {
                 text: "refund please".to_string(),
                 channel: Some("chat".to_string()),
@@ -102,7 +104,7 @@ async fn handle_hook_from_mounts_resolves_endpoint_scope_when_set() {
     // Phase M1.3 — when `messaging_endpoint_id` is set, the routing layer
     // loads `endpoint:{id}` regardless of what `request.scope` carries.
     let indexes_root = temp_indexes_dir();
-    let endpoint_id = "teams-legal-bot";
+    let endpoint_id = MessagingEndpointId::new("teams-legal-bot").unwrap();
 
     let flows = vec![FlowDoc {
         id: "nda_flow".to_string(),
@@ -114,7 +116,7 @@ async fn handle_hook_from_mounts_resolves_endpoint_scope_when_set() {
         tags: vec!["nda".to_string(), "contract".to_string()],
         node_ids: vec!["start".to_string()],
     }];
-    let endpoint_scope_key = fast2flow_contracts::endpoint_scope(endpoint_id);
+    let endpoint_scope_key = fast2flow_contracts::endpoint_scope(&endpoint_id);
     build_index(&endpoint_scope_key, &flows, &indexes_root, 0).expect("endpoint index build");
 
     let router = CoreRouter::new(
@@ -127,7 +129,7 @@ async fn handle_hook_from_mounts_resolves_endpoint_scope_when_set() {
     let output = handle_hook_from_mounts(
         &router,
         Fast2FlowHookInV1 {
-            // Deliberately wrong scope — endpoint id must take precedence.
+            // Deliberately stale scope — endpoint id must take precedence.
             scope: "stale:tenant".to_string(),
             envelope: MessageEnvelope {
                 text: "nda please".to_string(),
@@ -140,7 +142,7 @@ async fn handle_hook_from_mounts_resolves_endpoint_scope_when_set() {
             registry_path: "/mnt/registry/latest.json".to_string(),
             indexes_path: indexes_root.display().to_string(),
             now_unix_ms: 0,
-            messaging_endpoint_id: Some(endpoint_id.to_string()),
+            messaging_endpoint_id: Some(endpoint_id),
         },
     )
     .await;
@@ -223,7 +225,7 @@ async fn handle_hook_from_mounts_endpoint_id_with_missing_index_continues() {
     let output = handle_hook_from_mounts(
         &router,
         Fast2FlowHookInV1 {
-            scope: "ignored:by:endpoint".to_string(),
+            scope: "ignored:endpoint".to_string(),
             envelope: MessageEnvelope {
                 text: "anything".to_string(),
                 channel: None,
@@ -235,7 +237,7 @@ async fn handle_hook_from_mounts_endpoint_id_with_missing_index_continues() {
             registry_path: "/mnt/registry/latest.json".to_string(),
             indexes_path: "/tmp/does-not-exist-fast2flow-m1-3".to_string(),
             now_unix_ms: 0,
-            messaging_endpoint_id: Some("teams-unknown".to_string()),
+            messaging_endpoint_id: Some(MessagingEndpointId::new("teams-unknown").unwrap()),
         },
     )
     .await;
