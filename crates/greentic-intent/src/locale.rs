@@ -44,6 +44,11 @@ pub struct LocaleBundle {
     /// Named time words → `(hour, minute)` in 24-hour form.
     /// e.g. `noon=(12,0)`, `midnight=(0,0)`, `midi=(12,0)`.
     pub time_words: std::collections::HashMap<String, (u8, u8)>,
+    /// Cue words that come before a person/pet name. The next word
+    /// after a cue is a person candidate (subject to stop-word + shape
+    /// filters in the Person extractor). e.g. `for`, `with`, `called`,
+    /// `register`, `check`, `dog`, `cat`.
+    pub people_context_before: std::collections::HashSet<String>,
 }
 
 /// Locale-neutral modifier classification.
