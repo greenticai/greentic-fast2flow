@@ -5,7 +5,10 @@ use std::process;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
-use fast2flow_contracts::{validate_scope, Candidate, FlowDoc, IndexEntryV1, IndexManifestV1};
+use fast2flow_contracts::{
+    Candidate, FlowDoc, IndexEntryV1, IndexEntryV2, IndexManifestV1, IndexManifestV2,
+    validate_scope,
+};
 use tracing::{debug, info};
 
 /// Defense-in-depth: resolve `root.join(scope)` and verify the result is
@@ -138,7 +141,7 @@ pub fn parse_manifest(bytes: &[u8]) -> Result<IndexManifestV2> {
                 serde_json::from_value(value).context("failed decoding v1 manifest")?;
             Ok(IndexManifestV2::from_v1(m))
         }
-        other => Err(anyhow!("unknown index manifest version: {other}")),
+        other => Err(anyhow::anyhow!("unknown index manifest version: {other}")),
     }
 }
 
@@ -232,7 +235,7 @@ pub fn load_latest(indexes_root: &Path, scope: &str) -> Result<IndexStore> {
     Ok(IndexStore::from_manifest(manifest))
 }
 
-fn write_manifest(indexes_root: &Path, scope: &str, manifest: &IndexManifestV1) -> Result<()> {
+fn write_manifest(indexes_root: &Path, scope: &str, manifest: &IndexManifestV2) -> Result<()> {
     // Validate scope before joining to prevent path traversal on create_dir_all.
     validate_scope(scope)
         .map_err(|e| anyhow::anyhow!("scope validation failed: {e}"))
