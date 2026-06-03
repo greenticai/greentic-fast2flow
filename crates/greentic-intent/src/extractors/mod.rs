@@ -3,6 +3,7 @@
 
 pub mod date;
 pub mod location;
+pub mod person;
 pub mod time;
 
 #[cfg(feature = "email")]
