@@ -24,21 +24,42 @@ impl node::Guest for Component {
             version: info.version,
             summary: Some("Intelligent flow routing with LLM fallback".to_string()),
             capabilities: Vec::new(),
-            ops: vec![node::Op {
-                name: "route".to_string(),
-                summary: Some("Route message to appropriate flow".to_string()),
-                input: node::IoSchema {
-                    schema: node::SchemaSource::InlineCbor(schema::input_schema_cbor()),
-                    content_type: "application/cbor".to_string(),
-                    schema_version: None,
+            ops: vec![
+                node::Op {
+                    name: "route".to_string(),
+                    summary: Some("Route message from a precomputed matcher result".to_string()),
+                    input: node::IoSchema {
+                        schema: node::SchemaSource::InlineCbor(schema::input_schema_cbor()),
+                        content_type: "application/cbor".to_string(),
+                        schema_version: None,
+                    },
+                    output: node::IoSchema {
+                        schema: node::SchemaSource::InlineCbor(schema::output_schema_cbor()),
+                        content_type: "application/cbor".to_string(),
+                        schema_version: None,
+                    },
+                    examples: Vec::new(),
                 },
-                output: node::IoSchema {
-                    schema: node::SchemaSource::InlineCbor(schema::output_schema_cbor()),
-                    content_type: "application/cbor".to_string(),
-                    schema_version: None,
+                node::Op {
+                    name: "route-intent".to_string(),
+                    summary: Some("Route a Greentic-X Fast2Flow route request".to_string()),
+                    input: node::IoSchema {
+                        schema: node::SchemaSource::InlineCbor(
+                            schema::route_intent_input_schema_cbor(),
+                        ),
+                        content_type: "application/cbor".to_string(),
+                        schema_version: None,
+                    },
+                    output: node::IoSchema {
+                        schema: node::SchemaSource::InlineCbor(
+                            schema::route_intent_output_schema_cbor(),
+                        ),
+                        content_type: "application/cbor".to_string(),
+                        schema_version: None,
+                    },
+                    examples: Vec::new(),
                 },
-                examples: Vec::new(),
-            }],
+            ],
             schemas: Vec::new(),
             setup: None,
         }
@@ -50,6 +71,7 @@ impl node::Guest for Component {
     ) -> Result<node::InvocationResult, node::NodeError> {
         let output = match operation.as_str() {
             "route" => route::route_message(envelope.payload_cbor),
+            "route-intent" | "route_intent" => route::route_intent(envelope.payload_cbor),
             _ => greentic_types::cbor::canonical::to_canonical_cbor_allow_floats(
                 &serde_json::json!({
                     "error": format!("unsupported operation: {operation}")
