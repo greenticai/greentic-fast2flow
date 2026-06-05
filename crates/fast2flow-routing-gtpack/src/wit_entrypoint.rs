@@ -115,6 +115,9 @@ fn map_out(output: Fast2FlowHookOutV1) -> WitOut {
             target,
             confidence,
             reason,
+            // WIT world has no Vec<Entity> type yet; drop on the wasm path.
+            // The native binary path carries entities through unchanged.
+            entities: _,
         } => WitDirective::Dispatch((target, confidence, reason)),
         RoutingDirective::Respond { message } => WitDirective::Respond(message),
         RoutingDirective::Deny { reason } => WitDirective::Deny(reason),
