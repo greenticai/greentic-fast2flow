@@ -1,0 +1,19 @@
+{
+  "$schema": "https://greenticai.github.io/greentic-component/schemas/v1/components.manifest.schema.json",
+  "manifest_version": 1,
+  "package_base_ref": "oci://ghcr.io/greenticai/components/fast2flow",
+  "artifact_type": "application/vnd.greentic.component.v1",
+  "wasm_layer_media_type": "application/vnd.wasm.component.v1+wasm",
+  "manifest_layer_media_type": "application/vnd.greentic.component.manifest.v1+json",
+  "components": [
+    {
+      "component_id": "fast2flow.router",
+      "package_id": "fast2flow-router",
+      "kind": "router",
+      "runtime": "wasm_wasi",
+      "crate_path": "components/router",
+      "wasm_artifact": "target/wasm32-wasip2/release/fast2flow_component_router.wasm",
+      "oci_ref": "oci://ghcr.io/greenticai/components/fast2flow/fast2flow-router:latest"
+    }
+  ]
+}

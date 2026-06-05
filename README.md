@@ -91,6 +91,17 @@ That operation accepts the Greentic-X `Fast2FlowRouteRequest` JSON shape, loads 
 
 The legacy `route` operation remains available for flows that already call matcher first and pass a precomputed `match_result`.
 
+The router can also be packaged as a direct OCI component for `greentic-distributor-client` / `greentic-component-runner` consumption:
+
+```bash
+bash scripts/build_components.sh
+bash scripts/package_components.sh
+# optional publish step for registry owners
+bash scripts/publish_components.sh
+```
+
+This publishes/resolves the component reference declared in `components/manifest.json`, for example `oci://ghcr.io/greenticai/components/fast2flow/fast2flow-router:latest`.
+
 Required runtime inputs for `route-intent`:
 
 - `scope`: index scope to load.
