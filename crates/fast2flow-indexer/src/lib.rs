@@ -20,9 +20,14 @@ use tracing::{debug, info};
 pub fn normalize_under_root(root: &Path, scope: &str) -> io::Result<PathBuf> {
     validate_scope(scope).map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
 
-    // Canonicalize root (must exist).
-    let canonical_root =
-        fs::canonicalize(root).map_err(|e| io::Error::new(io::ErrorKind::NotFound, e))?;
+    // Canonicalize root when the host filesystem supports it. WASI preopens
+    // may reject canonicalization even for valid mounted roots; in that case a
+    // lexical join is still safe because `validate_scope` rejects path
+    // separators, dot segments, and traversal shapes.
+    let canonical_root = match fs::canonicalize(root) {
+        Ok(path) => path,
+        Err(_) => return Ok(root.join(scope)),
+    };
 
     let joined = canonical_root.join(scope);
 
@@ -429,5 +434,24 @@ mod tests {
         assert_eq!(cands.len(), 1);
         assert!(cands[0].score_hint > 0.0);
         assert_eq!(cands[0].flow_id, "meeting");
+    }
+}
+
+#[cfg(test)]
+mod wasi_path_tests {
+    use super::*;
+
+    #[test]
+    fn normalize_under_root_returns_lexical_path_when_root_canonicalize_fails() {
+        let path = normalize_under_root(Path::new("/definitely/missing/root"), "tenant:team")
+            .expect("valid scope should allow lexical fallback");
+        assert_eq!(path, PathBuf::from("/definitely/missing/root/tenant:team"));
+    }
+
+    #[test]
+    fn normalize_under_root_still_rejects_invalid_scope_on_fallback() {
+        let err = normalize_under_root(Path::new("/definitely/missing/root"), "../etc:passwd")
+            .expect_err("invalid scope should be rejected before fallback");
+        assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
     }
 }
