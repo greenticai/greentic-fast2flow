@@ -35,12 +35,57 @@ pub fn output_schema() -> SchemaIr {
     ])
 }
 
+/// Schema for Greentic-X Fast2Flow route-intent operation input.
+pub fn route_intent_input_schema() -> SchemaIr {
+    object_schema(vec![
+        ("scope", string_schema(1, 256), true),
+        ("envelope", route_intent_envelope_schema(), true),
+        ("session_active", SchemaIr::Bool, true),
+        ("input_locale", string_schema(1, 32), true),
+        (
+            "time_budget_ms",
+            SchemaIr::Int {
+                min: Some(0),
+                max: None,
+            },
+            true,
+        ),
+        ("registry_path", string_schema(0, 4096), true),
+        ("indexes_path", string_schema(0, 4096), true),
+        (
+            "now_unix_ms",
+            SchemaIr::Int {
+                min: Some(0),
+                max: None,
+            },
+            true,
+        ),
+        ("metadata", any_schema(), false),
+    ])
+}
+
+/// Schema for Greentic-X Fast2Flow route-intent operation output.
+pub fn route_intent_output_schema() -> SchemaIr {
+    object_schema(vec![
+        ("directive", route_intent_directive_schema(), true),
+        ("metadata", any_schema(), false),
+    ])
+}
+
 pub fn input_schema_cbor() -> Vec<u8> {
     canonical::to_canonical_cbor_allow_floats(&input_schema()).unwrap_or_default()
 }
 
 pub fn output_schema_cbor() -> Vec<u8> {
     canonical::to_canonical_cbor_allow_floats(&output_schema()).unwrap_or_default()
+}
+
+pub fn route_intent_input_schema_cbor() -> Vec<u8> {
+    canonical::to_canonical_cbor_allow_floats(&route_intent_input_schema()).unwrap_or_default()
+}
+
+pub fn route_intent_output_schema_cbor() -> Vec<u8> {
+    canonical::to_canonical_cbor_allow_floats(&route_intent_output_schema()).unwrap_or_default()
 }
 
 // Helper functions
@@ -52,6 +97,31 @@ fn string_schema(min: u64, max: u64) -> SchemaIr {
         regex: None,
         format: None,
     }
+}
+
+fn route_intent_envelope_schema() -> SchemaIr {
+    object_schema(vec![
+        ("text", string_schema(0, 65536), true),
+        ("channel", string_schema(1, 128), false),
+        ("provider", string_schema(1, 128), false),
+    ])
+}
+
+fn route_intent_directive_schema() -> SchemaIr {
+    object_schema(vec![
+        ("type", string_schema(1, 32), true),
+        ("target", string_schema(1, 512), false),
+        (
+            "confidence",
+            SchemaIr::Float {
+                min: Some(0.0),
+                max: Some(1.0),
+            },
+            false,
+        ),
+        ("reason", string_schema(1, 4096), false),
+        ("message", string_schema(1, 4096), false),
+    ])
 }
 
 /// Creates an object schema with explicit required tracking.
