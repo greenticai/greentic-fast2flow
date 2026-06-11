@@ -9,7 +9,7 @@ use fast2flow_routing_gtpack::{HostRuntime, ENV_LLM_PROVIDER};
 async fn host_runtime_boot_from_env_routes_with_mounted_indexes() {
     std::env::set_var(ENV_LLM_PROVIDER, "disabled");
 
-    let scope = "tenant-e2e";
+    let scope = "tenant-e2e:default";
     let indexes_root = temp_indexes_dir();
     let flows = vec![FlowDoc {
         id: "refund_flow".to_string(),
@@ -39,6 +39,7 @@ async fn host_runtime_boot_from_env_routes_with_mounted_indexes() {
             registry_path: "/mnt/registry/latest.json".to_string(),
             indexes_path: indexes_root.display().to_string(),
             now_unix_ms: 0,
+            messaging_endpoint_id: None,
         })
         .await;
 

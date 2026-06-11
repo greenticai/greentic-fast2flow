@@ -278,6 +278,7 @@ async fn run_route(command: RouteCommands) -> Result<()> {
                 registry_path: "/mnt/registry/latest.json".to_string(),
                 indexes_path: indexes_path.display().to_string(),
                 now_unix_ms: 0,
+                messaging_endpoint_id: None,
             };
             debug!(text = %request.envelope.text, "route simulate input");
             let output = router.route(request, &lookup).await;

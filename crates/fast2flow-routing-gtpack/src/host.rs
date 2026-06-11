@@ -14,9 +14,9 @@ use fast2flow_strategy_phase1::Phase1DeterministicStrategy;
 use greentic_intent::{IntentContext, IntentEngine};
 use tracing::{debug, info, warn};
 
-use crate::config::{build_llm, RouterBootstrapConfig};
-use crate::handle_hook_from_mounts;
+use crate::config::{RouterBootstrapConfig, build_llm};
 use crate::policy::{load_policy_from_env, resolve_policy, validate_policy};
+use crate::{canonicalize_scope, handle_hook_from_mounts};
 
 pub struct HostRuntime {
     strategy: Arc<dyn RoutingStrategy>,
@@ -78,7 +78,13 @@ impl HostRuntime {
         })
     }
 
-    pub async fn route_from_mounts(&self, request: Fast2FlowHookInV1) -> Fast2FlowHookOutV1 {
+    pub async fn route_from_mounts(&self, mut request: Fast2FlowHookInV1) -> Fast2FlowHookOutV1 {
+        // M1.3: canonicalize BEFORE policy so `scope_overrides` keyed on
+        // `endpoint:{id}` match when the caller supplied a stale scope
+        // alongside a `messaging_endpoint_id`. Without this, policy
+        // resolves against the stale scope while the routing layer below
+        // dispatches via the endpoint index — split-brain.
+        canonicalize_scope(&mut request);
         let entities = self.extract_entities(&request);
         let (filter, config, _) = self.resolve_request_policy(&request);
         let router = CoreRouter::new(
@@ -94,8 +100,9 @@ impl HostRuntime {
 
     pub async fn route_from_mounts_with_trace(
         &self,
-        request: Fast2FlowHookInV1,
+        mut request: Fast2FlowHookInV1,
     ) -> (Fast2FlowHookOutV1, RoutingExecutionTraceV1) {
+        canonicalize_scope(&mut request);
         let entities = self.extract_entities(&request);
         let (filter, config, policy_trace) = self.resolve_request_policy(&request);
         let router = CoreRouter::new(

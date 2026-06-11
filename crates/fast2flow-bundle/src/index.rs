@@ -31,20 +31,10 @@ pub struct IndexManifest {
 
 /// Builds an index manifest from flow entries.
 ///
-/// This function:
-/// 1. Computes term frequencies for each document
-/// 2. Computes document frequencies for TF-IDF calculation
-/// 3. Applies title boosting (2x weight for title words)
-///
-/// # Arguments
-///
-/// * `entries` - Slice of flow entries to index
-/// * `tenant` - Tenant identifier
-/// * `team` - Team identifier
-///
-/// # Returns
-///
-/// A complete `IndexManifest` ready for serialization.
+/// Legacy doc-gen / inspection variant (heavy TF-IDF schema). Phase M1
+/// endpoint indexing goes through `fast2flow_indexer::build_index`
+/// instead — that produces the lean `IndexManifestV1` that the routing
+/// layer actually loads.
 pub fn build_index_manifest(entries: &[FlowEntry], tenant: &str, team: &str) -> IndexManifest {
     let mut term_frequencies: HashMap<String, HashMap<String, u32>> = HashMap::new();
     let mut document_frequencies: HashMap<String, u32> = HashMap::new();
@@ -53,12 +43,11 @@ pub fn build_index_manifest(entries: &[FlowEntry], tenant: &str, team: &str) -> 
         let doc_key = format!("{}:{}", entry.pack_id, entry.flow_id);
         let mut doc_tf: HashMap<String, u32> = HashMap::new();
 
-        // Count term frequencies for this document
         for keyword in &entry.keywords {
             *doc_tf.entry(keyword.clone()).or_insert(0) += 1;
         }
 
-        // Add title words with higher weight (2x boost)
+        // Title words get a 2x boost.
         for word in entry.title.to_lowercase().split_whitespace() {
             let clean: String = word.chars().filter(|c| c.is_alphanumeric()).collect();
             if clean.len() >= 2 {
@@ -66,7 +55,6 @@ pub fn build_index_manifest(entries: &[FlowEntry], tenant: &str, team: &str) -> 
             }
         }
 
-        // Update document frequencies
         for term in doc_tf.keys() {
             *document_frequencies.entry(term.clone()).or_insert(0) += 1;
         }
@@ -76,7 +64,7 @@ pub fn build_index_manifest(entries: &[FlowEntry], tenant: &str, team: &str) -> 
 
     IndexManifest {
         version: "1.0".to_string(),
-        scope: format!("{}:{}", tenant, team),
+        scope: format!("{tenant}:{team}"),
         last_updated: Utc::now().to_rfc3339(),
         flows: entries.to_vec(),
         term_frequencies,

@@ -20,6 +20,12 @@ package = "greentic:component"
 world = "greentic:component/component-v0-v6-v0@0.6.0"
 
 [dependencies]
+fast2flow-contracts.workspace = true
+fast2flow-core.workspace = true
+fast2flow-hooks.workspace = true
+fast2flow-indexer.workspace = true
+fast2flow-strategy-phase1.workspace = true
+futures.workspace = true
 greentic-types.workspace = true
 greentic-interfaces-guest.workspace = true
 serde.workspace = true

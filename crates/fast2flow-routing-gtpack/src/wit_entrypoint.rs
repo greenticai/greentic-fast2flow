@@ -1,20 +1,19 @@
-use std::path::Path;
 use std::sync::Arc;
 use std::sync::OnceLock;
 
 use fast2flow_contracts::{
-    Fast2FlowHookInV1, Fast2FlowHookOutV1, MessageEnvelope, RoutingDirective,
+    Fast2FlowHookInV1, Fast2FlowHookOutV1, MessageEnvelope, MessagingEndpointId, RoutingDirective,
+    validate_scope,
 };
 use fast2flow_core::CoreRouter;
-use fast2flow_indexer::load_latest;
 use futures::executor::block_on;
 
 use super::generated_bindings::exports::greentic::fast2flow::routing_hook::Guest;
 use super::generated_bindings::greentic::fast2flow::routing_types::{
-    Fast2flowHookInV1 as WitIn, Fast2flowHookOutV1 as WitOut, MessageEnvelope as WitEnvelope,
-    RoutingDirective as WitDirective,
+    DispatchPayload as WitDispatchPayload, Fast2flowHookInV1 as WitIn,
+    Fast2flowHookOutV1 as WitOut, MessageEnvelope as WitEnvelope, RoutingDirective as WitDirective,
 };
-use super::{MountedIndexLookup, INDEXES_MOUNT};
+use super::handle_hook_from_mounts;
 
 pub trait WitRoutingRuntime: Send + Sync {
     fn route(&self, request: Fast2FlowHookInV1) -> Fast2FlowHookOutV1;
@@ -40,28 +39,10 @@ impl MountedRuntime {
 
 impl WitRoutingRuntime for MountedRuntime {
     fn route(&self, request: Fast2FlowHookInV1) -> Fast2FlowHookOutV1 {
-        let indexes_path = if request.indexes_path.is_empty() {
-            INDEXES_MOUNT
-        } else {
-            request.indexes_path.as_str()
-        };
-        let scope = request.scope.clone();
-        let store = match load_latest(Path::new(indexes_path), &scope) {
-            Ok(store) => store,
-            Err(err) => {
-                tracing::warn!(
-                    scope = %scope,
-                    indexes_path = %indexes_path,
-                    error = %err,
-                    "failed to load mounted index; routing → continue"
-                );
-                return Fast2FlowHookOutV1 {
-                    directive: RoutingDirective::Continue,
-                };
-            }
-        };
-        let lookup = MountedIndexLookup { scope, store };
-        block_on(self.router.route(request, &lookup))
+        // F3 fix: delegate to the shared async path so scope canonicalization
+        // + mount lookup match the host runtime exactly. The Guest trait is
+        // sync, so we hop through `block_on`.
+        block_on(handle_hook_from_mounts(&self.router, request))
     }
 }
 
@@ -79,7 +60,30 @@ pub struct Component;
 
 impl Guest for Component {
     fn handle_hook(request: WitIn) -> WitOut {
-        let request = map_in(request);
+        // M1.3: validate at the trust boundary. If the endpoint_id or scope
+        // is malformed, fail closed — return Continue so no routing occurs.
+        let endpoint_id = match request.messaging_endpoint_id.as_deref() {
+            Some(raw) => match MessagingEndpointId::try_from(raw) {
+                Ok(id) => Some(id),
+                Err(_) => {
+                    return WitOut {
+                        directive: WitDirective::Continue,
+                    };
+                }
+            },
+            None => None,
+        };
+
+        // Validate scope when no endpoint_id overrides it.
+        if endpoint_id.is_none() && !request.scope.is_empty() {
+            if validate_scope(&request.scope).is_err() {
+                return WitOut {
+                    directive: WitDirective::Continue,
+                };
+            }
+        }
+
+        let request = map_in_validated(request, endpoint_id);
         let output = ROUTING_RUNTIME
             .get()
             .map(|runtime| runtime.route(request))
@@ -90,7 +94,7 @@ impl Guest for Component {
     }
 }
 
-fn map_in(request: WitIn) -> Fast2FlowHookInV1 {
+fn map_in_validated(request: WitIn, endpoint_id: Option<MessagingEndpointId>) -> Fast2FlowHookInV1 {
     let envelope = request.envelope;
     Fast2FlowHookInV1 {
         scope: request.scope,
@@ -105,6 +109,7 @@ fn map_in(request: WitIn) -> Fast2FlowHookInV1 {
         registry_path: request.registry_path,
         indexes_path: request.indexes_path,
         now_unix_ms: request.now_unix_ms,
+        messaging_endpoint_id: endpoint_id,
     }
 }
 
@@ -118,7 +123,13 @@ fn map_out(output: Fast2FlowHookOutV1) -> WitOut {
             // WIT world has no Vec<Entity> type yet; drop on the wasm path.
             // The native binary path carries entities through unchanged.
             entities: _,
-        } => WitDirective::Dispatch((target, confidence, reason)),
+            utterance,
+        } => WitDirective::Dispatch(WitDispatchPayload {
+            target,
+            confidence,
+            reason,
+            utterance,
+        }),
         RoutingDirective::Respond { message } => WitDirective::Respond(message),
         RoutingDirective::Deny { reason } => WitDirective::Deny(reason),
     };
