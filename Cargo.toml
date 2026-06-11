@@ -13,8 +13,6 @@ members = [
     "crates/fast2flow-hooks",
     "crates/fast2flow-indexer",
     "crates/fast2flow-llm",
-    "crates/fast2flow-llm-ollama",
-    "crates/fast2flow-llm-openai",
     "crates/fast2flow-routing-gtpack",
     "crates/fast2flow-strategy",
     "crates/fast2flow-strategy-phase1",
@@ -40,8 +38,6 @@ fast2flow-core = { path = "crates/fast2flow-core" }
 fast2flow-hooks = { path = "crates/fast2flow-hooks" }
 fast2flow-indexer = { path = "crates/fast2flow-indexer" }
 fast2flow-llm = { path = "crates/fast2flow-llm" }
-fast2flow-llm-ollama = { path = "crates/fast2flow-llm-ollama" }
-fast2flow-llm-openai = { path = "crates/fast2flow-llm-openai" }
 fast2flow-routing-gtpack = { path = "crates/fast2flow-routing-gtpack" }
 fast2flow-strategy = { path = "crates/fast2flow-strategy" }
 fast2flow-strategy-phase1 = { path = "crates/fast2flow-strategy-phase1" }

@@ -55,7 +55,7 @@ When a message comes in, Fast2Flow runs this pipeline:
 3. The deterministic strategy scores likely matches.
    This is the normal path and is intended to handle the majority of traffic.
 4. If the top match is confident enough, Fast2Flow returns `Dispatch`.
-5. If the deterministic result is not strong enough, Fast2Flow can optionally ask an LLM for help.
+5. If the deterministic result is not strong enough, Fast2Flow returns `Continue` — an LLM fallback (in greentic-start) can then take over.
 6. If no safe answer is available, Fast2Flow returns `Continue`.
 
 The important design rule is that Fast2Flow prefers predictable routing first and only uses the LLM as a fallback.
@@ -71,7 +71,7 @@ Example:
 5. It sees that the refund flow is the best match.
 6. It returns a directive telling the caller to dispatch to `support/refund_flow`.
 
-If the message is unclear, such as `help`, the deterministic stage may not be confident enough. In that case Fast2Flow either asks the configured LLM for a better guess or returns `Continue`, depending on runtime configuration and thresholds.
+If the message is unclear, such as `help`, the deterministic stage may not be confident enough. In that case Fast2Flow returns `Continue`, and greentic-start's LLM fallback can take it from there.
 
 ## Two Ways To Run It
 
@@ -152,7 +152,6 @@ cat > /tmp/hook_request.json <<'JSON'
 }
 JSON
 
-FAST2FLOW_LLM_PROVIDER=disabled \
 cargo run -p fast2flow-routing-gtpack --bin greentic-fast2flow-routing-host < /tmp/hook_request.json
 ```
 
@@ -165,22 +164,12 @@ cargo run -p greentic-fast2flow -- policy print-default > /tmp/fast2flow-policy.
 cargo run -p greentic-fast2flow -- policy validate --file /tmp/fast2flow-policy.json
 
 FAST2FLOW_POLICY_PATH=/tmp/fast2flow-policy.json \
-FAST2FLOW_LLM_PROVIDER=disabled \
 cargo run -p fast2flow-routing-gtpack --bin greentic-fast2flow-routing-host < /tmp/hook_request.json
 ```
 
-7. Optional: enable an LLM provider.
+7. LLM fallback.
 
-Use this only when deterministic matching is not enough for your use case.
-
-- OpenAI:
-  - Set `FAST2FLOW_LLM_PROVIDER=openai`.
-  - Set `FAST2FLOW_OPENAI_API_KEY_PATH` to the secret key path.
-  - Optionally set `FAST2FLOW_OPENAI_MODEL_PATH`.
-- Ollama:
-  - Set `FAST2FLOW_LLM_PROVIDER=ollama`.
-  - Set `FAST2FLOW_OLLAMA_MODEL_PATH` to the secret key path containing the model name.
-  - Optionally set `FAST2FLOW_OLLAMA_ENDPOINT_PATH`.
+The host is **deterministic-only**. When deterministic matching isn't confident it returns `Continue`; the LLM routing fallback now lives in `greentic-start` (embedded `greentic-llm`), configured via the bundle's `llm:` block.
 
 8. Build/package as a gtpack routing extension:
 
@@ -202,7 +191,6 @@ To run Fast2Flow in a real environment, you typically need:
 
 - a registry mounted at `/mnt/registry`
 - built indexes mounted at `/mnt/indexes/<scope>/...`
-- a chosen LLM mode via `FAST2FLOW_LLM_PROVIDER`
 - an optional routing policy file
 
 In other words, production use is:
@@ -244,8 +232,7 @@ Index/runtime deployment requirements (for either runtime mode):
 
 - Mount registry at `/mnt/registry`.
 - Mount indexes at `/mnt/indexes/<scope>/index.json` and `/mnt/indexes/<scope>/latest`.
-- Set `FAST2FLOW_LLM_PROVIDER` (`disabled|openai|ollama`).
-- Optionally set `FAST2FLOW_POLICY_PATH` and provider secret-path env vars.
+- Optionally set `FAST2FLOW_POLICY_PATH`.
 
 Publish behavior in this repository:
 
@@ -263,9 +250,7 @@ Publish behavior in this repository:
 - `crates/fast2flow-strategy-phase1`: deterministic phase-1 strategy implementation.
 - `crates/fast2flow-indexer`: index build/load/query utilities.
 - `crates/fast2flow-hooks`: default hook filter policies.
-- `crates/fast2flow-llm`: provider interface.
-- `crates/fast2flow-llm-openai`: OpenAI adapter.
-- `crates/fast2flow-llm-ollama`: Ollama adapter.
+- `crates/fast2flow-llm`: provider interface (generic, currently unused — the host is deterministic-only; the LLM routing fallback lives in greentic-start).
 - `crates/fast2flow-routing-gtpack`: Greentic-specific routing extension layer.
 - `cli/fast2flow-cli`: developer CLI binary `greentic-fast2flow` (`index build|inspect`, `route simulate`).
   - Policy tooling: `policy validate`, `policy print-default`.
@@ -340,11 +325,7 @@ cargo run -p fast2flow-routing-gtpack --bin greentic-fast2flow-routing-host < ho
 
 Relevant env vars:
 
-- `FAST2FLOW_LLM_PROVIDER` (`disabled` | `openai` | `ollama`)
-- `FAST2FLOW_OPENAI_API_KEY_PATH`
-- `FAST2FLOW_OPENAI_MODEL_PATH`
-- `FAST2FLOW_OLLAMA_ENDPOINT_PATH`
-- `FAST2FLOW_OLLAMA_MODEL_PATH`
+- `FAST2FLOW_MIN_CONFIDENCE`, `FAST2FLOW_CANDIDATE_LIMIT` (deterministic tuning)
 - `FAST2FLOW_POLICY_PATH` (optional, defaults to `/mnt/registry/fast2flow-policy.json`)
 - `FAST2FLOW_TRACE_POLICY` (`1|true|yes` prints policy resolution trace JSON to stderr in host binary)
 

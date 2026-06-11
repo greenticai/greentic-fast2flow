@@ -14,7 +14,7 @@ use fast2flow_strategy_phase1::Phase1DeterministicStrategy;
 use greentic_intent::{IntentContext, IntentEngine};
 use tracing::{debug, info, warn};
 
-use crate::config::{build_llm, RouterBootstrapConfig};
+use crate::config::RouterBootstrapConfig;
 use crate::handle_hook_from_mounts;
 use crate::policy::{load_policy_from_env, resolve_policy, validate_policy};
 
@@ -47,14 +47,14 @@ impl HostRuntime {
         }
         let policy_loaded = policy.is_some();
         let strategy: Arc<dyn RoutingStrategy> = Arc::new(Phase1DeterministicStrategy);
-        let llm = build_llm(&config.llm).await?;
+        // Host does deterministic routing only; the LLM fallback lives in greentic-start.
+        let llm: Option<Arc<dyn LlmProvider>> = None;
         info!(
             min_confidence = config.min_confidence,
             llm_min_confidence = config.llm_min_confidence,
             candidate_limit = config.candidate_limit,
-            llm_enabled = llm.is_some(),
             policy_loaded,
-            "fast2flow host runtime booted"
+            "fast2flow host runtime booted (deterministic only)"
         );
         let intent_engine = Arc::new(
             IntentEngine::builder()
