@@ -2,13 +2,11 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use fast2flow_contracts::{Fast2FlowHookInV1, FlowDoc, MessageEnvelope, RoutingDirective};
 use fast2flow_indexer::build_index;
-use fast2flow_routing_gtpack::{HostRuntime, ENV_LLM_PROVIDER};
+use fast2flow_routing_gtpack::HostRuntime;
 
 #[tokio::test]
 #[serial_test::serial]
 async fn host_runtime_boot_from_env_routes_with_mounted_indexes() {
-    std::env::set_var(ENV_LLM_PROVIDER, "disabled");
-
     let scope = "tenant-e2e";
     let indexes_root = temp_indexes_dir();
     let flows = vec![FlowDoc {
@@ -42,25 +40,12 @@ async fn host_runtime_boot_from_env_routes_with_mounted_indexes() {
         })
         .await;
 
-    std::env::remove_var(ENV_LLM_PROVIDER);
-
     match output.directive {
         RoutingDirective::Dispatch { target, .. } => {
             assert_eq!(target, "support/refund_flow");
         }
         other => panic!("expected dispatch, got {other:?}"),
     }
-}
-
-#[tokio::test]
-#[serial_test::serial]
-async fn host_runtime_boot_from_env_rejects_unknown_provider() {
-    std::env::set_var(ENV_LLM_PROVIDER, "unknown-provider");
-
-    let result = HostRuntime::boot_from_env().await;
-
-    std::env::remove_var(ENV_LLM_PROVIDER);
-    assert!(result.is_err());
 }
 
 fn temp_indexes_dir() -> std::path::PathBuf {

@@ -13,22 +13,17 @@ mod policy;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod telemetry;
 
-pub use config::{
-    build_router_from_config, build_router_from_env, LlmRuntimeConfig, RouterBootstrapConfig,
-};
+pub use config::{build_router_from_config, build_router_from_env, RouterBootstrapConfig};
 pub use host::HostRuntime;
 pub use policy::{load_policy_from_env, load_policy_from_path};
 
 pub const REGISTRY_MOUNT: &str = "/mnt/registry";
 pub const INDEXES_MOUNT: &str = "/mnt/indexes";
-pub const ENV_LLM_PROVIDER: &str = "FAST2FLOW_LLM_PROVIDER";
 pub const ENV_MIN_CONFIDENCE: &str = "FAST2FLOW_MIN_CONFIDENCE";
+// Retained for the (unused) core LLM threshold; the host's LLM tier is retired
+// — the LLM fallback now lives in greentic-start.
 pub const ENV_LLM_MIN_CONFIDENCE: &str = "FAST2FLOW_LLM_MIN_CONFIDENCE";
 pub const ENV_CANDIDATE_LIMIT: &str = "FAST2FLOW_CANDIDATE_LIMIT";
-pub const ENV_OPENAI_API_KEY_PATH: &str = "FAST2FLOW_OPENAI_API_KEY_PATH";
-pub const ENV_OPENAI_MODEL_PATH: &str = "FAST2FLOW_OPENAI_MODEL_PATH";
-pub const ENV_OLLAMA_ENDPOINT_PATH: &str = "FAST2FLOW_OLLAMA_ENDPOINT_PATH";
-pub const ENV_OLLAMA_MODEL_PATH: &str = "FAST2FLOW_OLLAMA_MODEL_PATH";
 pub const ENV_POLICY_PATH: &str = "FAST2FLOW_POLICY_PATH";
 pub const ENV_TRACE_POLICY: &str = "FAST2FLOW_TRACE_POLICY";
 pub const DEFAULT_POLICY_PATH: &str = "/mnt/registry/fast2flow-policy.json";
