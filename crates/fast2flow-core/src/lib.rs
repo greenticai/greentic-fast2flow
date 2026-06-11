@@ -134,6 +134,7 @@ impl CoreRouter {
                         target: decision.target,
                         confidence: decision.confidence,
                         reason: decision.reason,
+                        entities: Vec::new(),
                         utterance: Some(request.envelope.text.clone()),
                     },
                 };
@@ -184,6 +185,7 @@ impl CoreRouter {
                                 target: answer.target,
                                 confidence: answer.confidence,
                                 reason: answer.reason,
+                                entities: Vec::new(),
                                 utterance: Some(request.envelope.text.clone()),
                             },
                         };

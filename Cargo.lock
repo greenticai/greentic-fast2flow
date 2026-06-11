@@ -644,7 +644,9 @@ name = "fast2flow-indexer"
 version = "1.1.0-dev.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "fast2flow-contracts",
+ "greentic-intent",
  "serde",
  "serde_json",
  "tracing",
@@ -695,6 +697,7 @@ name = "fast2flow-routing-gtpack"
 version = "1.1.0-dev.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "fast2flow-contracts",
  "fast2flow-core",
  "fast2flow-hooks",
@@ -705,6 +708,7 @@ dependencies = [
  "fast2flow-strategy",
  "fast2flow-strategy-phase1",
  "futures",
+ "greentic-intent",
  "greentic-telemetry",
  "regex",
  "serde_json",
@@ -936,7 +940,7 @@ dependencies = [
 
 [[package]]
 name = "greentic-intent"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "email_address",

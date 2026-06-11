@@ -239,6 +239,9 @@ pub enum RoutingDirective {
         target: String,
         confidence: f32,
         reason: String,
+        /// Entities extracted by the intent prefill pass.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        entities: Vec<RoutingEntity>,
         /// Original user text echoed for downstream slot extraction.
         /// `None` on legacy producers — consumers must tolerate absence.
         #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -250,6 +253,21 @@ pub enum RoutingDirective {
     Deny {
         reason: String,
     },
+}
+
+/// Slim view of `greentic_intent::Entity` for prefill on Dispatch.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct RoutingEntity {
+    /// Marker kind (matches `EntityKind::marker_name()`).
+    pub kind: String,
+    /// Canonical normalised value (e.g. `"20260530"`, `"14:00"`, `"London"`).
+    pub normalized: String,
+    /// Role tag from a preceding preposition (locations: `"in"`/`"from"`/`"to"`/…).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
+    /// Alternate serializations (e.g. `"iso"` → `"2026-05-30"` for dates).
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub formats: std::collections::BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -636,6 +654,7 @@ mod tests {
             target: "legal/nda_flow".to_string(),
             confidence: 0.87,
             reason: "deterministic".to_string(),
+            entities: Vec::new(),
             utterance: Some("NDA between Acme and us by Friday".to_string()),
         };
         let json = serde_json::to_string(&directive).expect("serialize");
@@ -651,6 +670,7 @@ mod tests {
             target: "support/refund_flow".to_string(),
             confidence: 0.91,
             reason: "deterministic".to_string(),
+            entities: Vec::new(),
             utterance: None,
         };
         let json = serde_json::to_string(&directive).expect("serialize");

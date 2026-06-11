@@ -73,6 +73,48 @@ pub fn en_gb_bundle() -> crate::locale::LocaleBundle {
             ("midday".into(), (12u8, 0u8)),
             ("midnight".into(), (0u8, 0u8)),
         ]),
+        people_context_before: std::collections::HashSet::from([
+            // Action verbs that introduce a name as the object.
+            "register".into(),
+            "check".into(),
+            "book".into(),
+            "sign".into(),
+            "drop".into(),
+            "schedule".into(),
+            "add".into(),
+            "log".into(),
+            "find".into(),
+            "get".into(),
+            "show".into(),
+            "search".into(),
+            "lookup".into(),
+            "email".into(),
+            "call".into(),
+            "meet".into(),
+            "ask".into(),
+            "tell".into(),
+            "remind".into(),
+            // Prepositions that often precede a name.
+            "for".into(),
+            "with".into(),
+            "about".into(),
+            "regarding".into(),
+            "to".into(),
+            "from".into(),
+            "of".into(),
+            "by".into(),
+            "in".into(),
+            "on".into(),
+            // Relational cues.
+            "called".into(),
+            "named".into(),
+            // Pet-type cues (also stop-words below).
+            "pet".into(),
+            "dog".into(),
+            "cat".into(),
+            "puppy".into(),
+            "kitten".into(),
+        ]),
     }
 }
 
@@ -132,6 +174,7 @@ pub fn fr_fr_bundle() -> crate::locale::LocaleBundle {
             ("vers".into(), LocationRole::To),
         ]),
         time_words: HashMap::from([("midi".into(), (12u8, 0u8)), ("minuit".into(), (0u8, 0u8))]),
+        people_context_before: std::collections::HashSet::new(),
     }
 }
 
@@ -185,6 +228,7 @@ pub fn es_es_bundle() -> crate::locale::LocaleBundle {
             ("mediodia".into(), (12u8, 0u8)),
             ("medianoche".into(), (0u8, 0u8)),
         ]),
+        people_context_before: std::collections::HashSet::new(),
     }
 }
 
@@ -233,6 +277,7 @@ pub fn nl_nl_bundle() -> crate::locale::LocaleBundle {
             ("bij".into(), LocationRole::Near),
         ]),
         time_words: HashMap::from([("middernacht".into(), (0u8, 0u8))]),
+        people_context_before: std::collections::HashSet::new(),
     }
 }
 
@@ -297,6 +342,7 @@ pub fn de_de_bundle() -> crate::locale::LocaleBundle {
             ("mittag".into(), (12u8, 0u8)),
             ("mitternacht".into(), (0u8, 0u8)),
         ]),
+        people_context_before: std::collections::HashSet::new(),
     }
 }
 
