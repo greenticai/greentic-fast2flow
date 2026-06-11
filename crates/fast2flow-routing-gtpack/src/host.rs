@@ -14,7 +14,7 @@ use fast2flow_strategy_phase1::Phase1DeterministicStrategy;
 use greentic_intent::{IntentContext, IntentEngine};
 use tracing::{debug, info, warn};
 
-use crate::config::{RouterBootstrapConfig, build_llm};
+use crate::config::{build_llm, RouterBootstrapConfig};
 use crate::policy::{load_policy_from_env, resolve_policy, validate_policy};
 use crate::{canonicalize_scope, handle_hook_from_mounts};
 

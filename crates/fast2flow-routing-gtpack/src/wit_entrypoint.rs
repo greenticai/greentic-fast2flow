@@ -2,8 +2,8 @@ use std::sync::Arc;
 use std::sync::OnceLock;
 
 use fast2flow_contracts::{
-    Fast2FlowHookInV1, Fast2FlowHookOutV1, MessageEnvelope, MessagingEndpointId, RoutingDirective,
-    validate_scope,
+    validate_scope, Fast2FlowHookInV1, Fast2FlowHookOutV1, MessageEnvelope, MessagingEndpointId,
+    RoutingDirective,
 };
 use fast2flow_core::CoreRouter;
 use futures::executor::block_on;
