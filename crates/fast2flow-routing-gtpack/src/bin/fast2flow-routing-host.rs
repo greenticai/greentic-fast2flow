@@ -1,10 +1,16 @@
+#[cfg(not(target_arch = "wasm32"))]
 use std::io::{self, Read};
 
+#[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context;
+#[cfg(not(target_arch = "wasm32"))]
 use fast2flow_contracts::{Fast2FlowHookInV1, Fast2FlowHookOutV1};
+#[cfg(not(target_arch = "wasm32"))]
 use fast2flow_routing_gtpack::{telemetry, HostRuntime, ENV_TRACE_POLICY};
+#[cfg(not(target_arch = "wasm32"))]
 use tracing::{info, info_span, warn, Instrument};
 
+#[cfg(not(target_arch = "wasm32"))]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Logs go to stderr (or OTLP when configured); stdout carries the JSON
@@ -17,6 +23,10 @@ async fn main() -> anyhow::Result<()> {
     result
 }
 
+#[cfg(target_arch = "wasm32")]
+fn main() {}
+
+#[cfg(not(target_arch = "wasm32"))]
 async fn run() -> anyhow::Result<()> {
     let mut payload = String::new();
     io::stdin()
