@@ -11,6 +11,7 @@ description = "Bundle scanning and indexing for fast2flow routing"
 anyhow.workspace = true
 chrono = { workspace = true, features = ["serde", "std", "clock"] }
 fast2flow-contracts.workspace = true
+fast2flow-indexer.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml_bw.workspace = true

@@ -9,6 +9,7 @@ publish = false
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
+fast2flow-contracts.workspace = true
 fast2flow-llm.workspace = true
 greentic-secrets-lib.workspace = true
 reqwest.workspace = true

@@ -1,13 +1,92 @@
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use fast2flow_contracts::{
-    Candidate, FlowDoc, IndexEntryV1, IndexEntryV2, IndexManifestV1, IndexManifestV2,
+    validate_scope, Candidate, FlowDoc, IndexEntryV1, IndexEntryV2, IndexManifestV1,
+    IndexManifestV2,
 };
 use tracing::{debug, info};
+
+/// Defense-in-depth: resolve `root.join(scope)` and verify the result is
+/// contained within `root`. Rejects path-traversal attempts even if the
+/// scope string somehow bypasses higher-level validation.
+///
+/// The function first validates `scope` via [`validate_scope`], then ensures
+/// the resolved path does not escape `root`.
+pub fn normalize_under_root(root: &Path, scope: &str) -> io::Result<PathBuf> {
+    validate_scope(scope).map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+
+    // Canonicalize root when the host filesystem supports it. WASI preopens
+    // may reject canonicalization even for valid mounted roots; in that case a
+    // lexical join is still safe because `validate_scope` rejects path
+    // separators, dot segments, and traversal shapes.
+    let canonical_root = match fs::canonicalize(root) {
+        Ok(path) => path,
+        Err(_) => return Ok(root.join(scope)),
+    };
+
+    let joined = canonical_root.join(scope);
+
+    // The scope dir may not exist yet (write path). Walk up to find an
+    // existing ancestor, canonicalize that, then re-append the remainder.
+    let resolved = if joined.exists() {
+        fs::canonicalize(&joined)?
+    } else {
+        // Find the deepest existing ancestor.
+        let mut ancestor = joined.as_path();
+        let mut suffix_parts = Vec::new();
+        loop {
+            if let Some(parent) = ancestor.parent() {
+                if parent.exists() {
+                    // Collect the component we peeled off.
+                    if let Some(file_name) = ancestor.file_name() {
+                        suffix_parts.push(file_name.to_owned());
+                    }
+                    ancestor = parent;
+                    // Canonicalize the existing ancestor.
+                    let canonical_ancestor = fs::canonicalize(ancestor)?;
+                    // Re-append the non-existent tail.
+                    let mut result = canonical_ancestor;
+                    for part in suffix_parts.into_iter().rev() {
+                        result = result.join(part);
+                    }
+                    return if result.starts_with(&canonical_root) {
+                        Ok(result)
+                    } else {
+                        Err(io::Error::new(
+                            io::ErrorKind::PermissionDenied,
+                            "scope path escapes root",
+                        ))
+                    };
+                }
+                // Parent doesn't exist either — keep walking up.
+                if let Some(file_name) = ancestor.file_name() {
+                    suffix_parts.push(file_name.to_owned());
+                }
+                ancestor = parent;
+            } else {
+                // Reached filesystem root without finding an existing dir.
+                return Err(io::Error::new(
+                    io::ErrorKind::NotFound,
+                    "no existing ancestor for scope path",
+                ));
+            }
+        }
+    };
+
+    if resolved.starts_with(&canonical_root) {
+        Ok(resolved)
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "scope path escapes root",
+        ))
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct IndexStore {
@@ -67,7 +146,7 @@ pub fn parse_manifest(bytes: &[u8]) -> Result<IndexManifestV2> {
                 serde_json::from_value(value).context("failed decoding v1 manifest")?;
             Ok(IndexManifestV2::from_v1(m))
         }
-        other => Err(anyhow!("unknown index manifest version: {other}")),
+        other => Err(anyhow::anyhow!("unknown index manifest version: {other}")),
     }
 }
 
@@ -83,6 +162,7 @@ pub fn build_manifest_v2(scope: &str, flows: &[FlowDoc], now_unix_ms: u64) -> In
             tags: flow.tags.clone(),
             utterances: Vec::new(),
             node_ids: flow.node_ids.clone(),
+            flow_type: flow.flow_type,
         })
         .collect();
 
@@ -108,6 +188,7 @@ pub fn build_manifest(scope: &str, flows: &[FlowDoc], now_unix_ms: u64) -> Index
             tags: flow.tags.clone(),
             pack_id: flow.pack_id.clone(),
             target: flow.target.clone(),
+            flow_type: flow.flow_type,
         })
         .collect();
 
@@ -138,7 +219,8 @@ pub fn build_index(
 }
 
 pub fn load_latest(indexes_root: &Path, scope: &str) -> Result<IndexStore> {
-    let scope_dir = indexes_root.join(scope);
+    let scope_dir = normalize_under_root(indexes_root, scope)
+        .with_context(|| format!("scope {scope:?} failed path validation"))?;
     let latest_path = scope_dir.join("latest");
     let latest_name = fs::read_to_string(&latest_path)
         .with_context(|| format!("failed reading {}", latest_path.display()))?
@@ -161,6 +243,10 @@ pub fn load_latest(indexes_root: &Path, scope: &str) -> Result<IndexStore> {
 }
 
 fn write_manifest(indexes_root: &Path, scope: &str, manifest: &IndexManifestV2) -> Result<()> {
+    // Validate scope before joining to prevent path traversal on create_dir_all.
+    validate_scope(scope)
+        .map_err(|e| anyhow::anyhow!("scope validation failed: {e}"))
+        .with_context(|| format!("scope {scope:?} is invalid"))?;
     let scope_dir = indexes_root.join(scope);
     fs::create_dir_all(&scope_dir)
         .with_context(|| format!("failed creating {}", scope_dir.display()))?;
@@ -215,6 +301,7 @@ fn search_manifest(manifest: &IndexManifestV2, text: &str, limit: usize) -> Vec<
                     title: entry.title.clone(),
                     tags: entry.tags.clone(),
                     score_hint: score,
+                    flow_type: entry.flow_type,
                 },
             )
         })
@@ -290,6 +377,7 @@ mod tests {
                 title: "View pipeline".into(),
                 tags: vec!["pipeline".into()],
                 node_ids: vec![],
+                flow_type: fast2flow_contracts::FlowExecutionType::Deterministic,
             }],
             42,
         );
@@ -343,6 +431,7 @@ mod tests {
                 tags: vec!["meeting".into()],
                 utterances: vec!["book me a slot with sales".into()],
                 node_ids: vec![],
+                flow_type: fast2flow_contracts::FlowExecutionType::Deterministic,
             }],
         };
         let store = IndexStore::from_manifest(manifest);
@@ -350,5 +439,24 @@ mod tests {
         assert_eq!(cands.len(), 1);
         assert!(cands[0].score_hint > 0.0);
         assert_eq!(cands[0].flow_id, "meeting");
+    }
+}
+
+#[cfg(test)]
+mod wasi_path_tests {
+    use super::*;
+
+    #[test]
+    fn normalize_under_root_returns_lexical_path_when_root_canonicalize_fails() {
+        let path = normalize_under_root(Path::new("/definitely/missing/root"), "tenant:team")
+            .expect("valid scope should allow lexical fallback");
+        assert_eq!(path, PathBuf::from("/definitely/missing/root/tenant:team"));
+    }
+
+    #[test]
+    fn normalize_under_root_still_rejects_invalid_scope_on_fallback() {
+        let err = normalize_under_root(Path::new("/definitely/missing/root"), "../etc:passwd")
+            .expect_err("invalid scope should be rejected before fallback");
+        assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
     }
 }

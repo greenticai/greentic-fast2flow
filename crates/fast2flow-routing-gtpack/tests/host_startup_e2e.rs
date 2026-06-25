@@ -1,6 +1,8 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use fast2flow_contracts::{Fast2FlowHookInV1, FlowDoc, MessageEnvelope, RoutingDirective};
+use fast2flow_contracts::{
+    Fast2FlowHookInV1, FlowDoc, FlowExecutionType, MessageEnvelope, RoutingDirective,
+};
 use fast2flow_indexer::build_index;
 use fast2flow_routing_gtpack::{HostRuntime, ENV_LLM_PROVIDER};
 
@@ -9,7 +11,7 @@ use fast2flow_routing_gtpack::{HostRuntime, ENV_LLM_PROVIDER};
 async fn host_runtime_boot_from_env_routes_with_mounted_indexes() {
     std::env::set_var(ENV_LLM_PROVIDER, "disabled");
 
-    let scope = "tenant-e2e";
+    let scope = "tenant-e2e:default";
     let indexes_root = temp_indexes_dir();
     let flows = vec![FlowDoc {
         id: "refund_flow".to_string(),
@@ -18,6 +20,7 @@ async fn host_runtime_boot_from_env_routes_with_mounted_indexes() {
         title: "Refund Request".to_string(),
         tags: vec!["refund".to_string(), "billing".to_string()],
         node_ids: vec!["start".to_string(), "issue_refund".to_string()],
+        flow_type: FlowExecutionType::Deterministic,
     }];
     build_index(scope, &flows, &indexes_root, 0).expect("index build should succeed");
 
@@ -39,6 +42,7 @@ async fn host_runtime_boot_from_env_routes_with_mounted_indexes() {
             registry_path: "/mnt/registry/latest.json".to_string(),
             indexes_path: indexes_root.display().to_string(),
             now_unix_ms: 0,
+            messaging_endpoint_id: None,
         })
         .await;
 

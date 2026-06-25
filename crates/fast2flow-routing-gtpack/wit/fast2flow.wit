@@ -16,11 +16,29 @@ interface routing-types {
     registry-path: string,
     indexes-path: string,
     now-unix-ms: u64,
+    // Phase M1: per-endpoint scoping. When set, the routing layer derives
+    // the effective index scope as `endpoint:{id}`; `scope` is ignored.
+    messaging-endpoint-id: option<string>,
+  }
+
+  enum flow-execution-type {
+    deterministic,
+    agentic,
+  }
+
+  // Named record over positional tuple so future additions are
+  // field-additive instead of position-shifting.
+  record dispatch-payload {
+    target: string,
+    confidence: f32,
+    reason: string,
+    utterance: option<string>,
+    flow-type: flow-execution-type,
   }
 
   variant routing-directive {
     continue,
-    dispatch(tuple<string, f32, string>),
+    dispatch(dispatch-payload),
     respond(string),
     deny(string),
   }

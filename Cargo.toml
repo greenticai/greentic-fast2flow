@@ -32,37 +32,95 @@ license = "Commercial"
 [workspace.dependencies]
 anyhow = "1"
 async-trait = "0.1"
-chrono = { version = "0.4", default-features = false }
-clap = { version = "4", features = ["derive"] }
-fast2flow-bundle = { path = "crates/fast2flow-bundle" }
-fast2flow-contracts = { path = "crates/fast2flow-contracts" }
-fast2flow-core = { path = "crates/fast2flow-core" }
-fast2flow-hooks = { path = "crates/fast2flow-hooks" }
-fast2flow-indexer = { path = "crates/fast2flow-indexer" }
-fast2flow-llm = { path = "crates/fast2flow-llm" }
-fast2flow-llm-ollama = { path = "crates/fast2flow-llm-ollama" }
-fast2flow-llm-openai = { path = "crates/fast2flow-llm-openai" }
-fast2flow-routing-gtpack = { path = "crates/fast2flow-routing-gtpack" }
-fast2flow-strategy = { path = "crates/fast2flow-strategy" }
-fast2flow-strategy-phase1 = { path = "crates/fast2flow-strategy-phase1" }
 futures = "0.3"
-greentic-interfaces-guest = { version = "0.5", default-features = false, features = ["component-v0-6"] }
 greentic-secrets-lib = "0.5"
 greentic-telemetry = "0.5"
 greentic-types = "0.5"
 regex = "1"
-reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
-serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_yaml_bw = { package = "serde_yaml_gtc", version = "2.5" }
 serial_test = "3"
 tempfile = "3"
 thiserror = "2"
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "std"] }
 walkdir = "2.5"
 wit-bindgen = "0.57"
+
+[workspace.dependencies.chrono]
+version = "0.4"
+default-features = false
+
+[workspace.dependencies.clap]
+version = "4"
+features = [
+    "derive",
+]
+
+[workspace.dependencies.fast2flow-bundle]
+path = "crates/fast2flow-bundle"
+
+[workspace.dependencies.fast2flow-contracts]
+path = "crates/fast2flow-contracts"
+
+[workspace.dependencies.fast2flow-core]
+path = "crates/fast2flow-core"
+
+[workspace.dependencies.fast2flow-hooks]
+path = "crates/fast2flow-hooks"
+
+[workspace.dependencies.fast2flow-indexer]
+path = "crates/fast2flow-indexer"
+
+[workspace.dependencies.fast2flow-llm]
+path = "crates/fast2flow-llm"
+
+[workspace.dependencies.fast2flow-llm-ollama]
+path = "crates/fast2flow-llm-ollama"
+
+[workspace.dependencies.fast2flow-llm-openai]
+path = "crates/fast2flow-llm-openai"
+
+[workspace.dependencies.fast2flow-routing-gtpack]
+path = "crates/fast2flow-routing-gtpack"
+
+[workspace.dependencies.fast2flow-strategy]
+path = "crates/fast2flow-strategy"
+
+[workspace.dependencies.fast2flow-strategy-phase1]
+path = "crates/fast2flow-strategy-phase1"
+
+[workspace.dependencies.greentic-interfaces-guest]
+version = "0.5"
+default-features = false
+features = [
+    "component-v0-6",
+]
+
+[workspace.dependencies.reqwest]
+version = "0.13"
+default-features = false
+features = [
+    "json",
+    "rustls",
+]
+
+[workspace.dependencies.serde]
+version = "1"
+features = [
+    "derive",
+]
+
+[workspace.dependencies.serde_yaml_bw]
+package = "serde_yaml_gtc"
+version = "2.5"
+
+[workspace.dependencies.tokio]
+version = "1"
+features = [
+    "macros",
+    "rt-multi-thread",
+    "time",
+]
 
 [workspace.metadata.fast2flow]
 authoritative_crate = "fast2flow-contracts"

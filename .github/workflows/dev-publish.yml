@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -77,6 +78,8 @@ jobs:
           -p fast2flow-component-router
           --target wasm32-wasip2
           --release
+      - name: package direct router component
+        run: bash scripts/package_components.sh
       - name: test host crates
         run: >-
           cargo test
@@ -93,3 +96,13 @@ jobs:
           -p fast2flow-bundle
           -p greentic-fast2flow
           --all-features
+
+      - name: set up ORAS
+        uses: oras-project/setup-oras@v1
+      - name: log in to GHCR
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "${{ github.token }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: publish direct router component
+        run: bash scripts/publish_components.sh

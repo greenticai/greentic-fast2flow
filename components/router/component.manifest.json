@@ -1,0 +1,140 @@
+{
+  "$schema": "https://greenticai.github.io/greentic-component/schemas/v1/component.manifest.schema.json",
+  "id": "fast2flow-router",
+  "name": "fast2flow-router",
+  "version": "1.2.0",
+  "world": "greentic:component/component-v0-v6-v0@0.6.0",
+  "describe_export": "describe",
+  "operations": [
+    {
+      "name": "route-intent",
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "scope",
+          "envelope",
+          "session_active",
+          "input_locale",
+          "time_budget_ms",
+          "registry_path",
+          "indexes_path",
+          "now_unix_ms"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string"
+          },
+          "envelope": {
+            "type": "object",
+            "required": [
+              "text"
+            ],
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "channel": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          },
+          "session_active": {
+            "type": "boolean"
+          },
+          "input_locale": {
+            "type": "string"
+          },
+          "time_budget_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "registry_path": {
+            "type": "string"
+          },
+          "indexes_path": {
+            "type": "string"
+          },
+          "now_unix_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": true
+      },
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "directive"
+        ],
+        "properties": {
+          "directive": {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "additionalProperties": true
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    {
+      "name": "route",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    }
+  ],
+  "default_operation": "route-intent",
+  "supports": [
+    "greentic-x",
+    "fast2flow",
+    "routing"
+  ],
+  "profiles": {
+    "default": "stateless",
+    "supported": [
+      "stateless"
+    ]
+  },
+  "secret_requirements": [],
+  "capabilities": {
+    "host": {},
+    "wasi": {
+      "clocks": true,
+      "filesystem": {
+        "mode": "read",
+        "mounts": [
+          "/mnt/indexes",
+          "/mnt/registry"
+        ]
+      },
+      "random": false
+    }
+  },
+  "limits": {
+    "memory_mb": 128,
+    "wall_time_ms": 1000
+  },
+  "artifacts": {
+    "component_wasm": "target/wasm32-wasip2/release/fast2flow_component_router.wasm"
+  },
+  "hashes": {
+    "component_wasm": "blake3:0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

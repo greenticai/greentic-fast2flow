@@ -41,6 +41,7 @@ impl RoutingStrategy for Phase1DeterministicStrategy {
             target: winner.target.clone(),
             confidence: *score,
             reason: "phase1_deterministic_rank".to_string(),
+            flow_type: winner.flow_type,
         });
         match &decision {
             Some(d) => debug!(
