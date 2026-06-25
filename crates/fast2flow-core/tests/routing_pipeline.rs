@@ -3,7 +3,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
 use fast2flow_contracts::{
-    Candidate, Fast2FlowHookInV1, FlowDoc, MessageEnvelope, RoutingDirective, TextMatchModeV1,
+    Candidate, Fast2FlowHookInV1, FlowDoc, FlowExecutionType, MessageEnvelope, RoutingDirective,
+    TextMatchModeV1,
 };
 use fast2flow_core::{CandidateIndex, CoreRouter, RouterConfig};
 use fast2flow_hooks::{DefaultHookFilter, RespondRule};
@@ -32,6 +33,39 @@ async fn deterministic_routing_dispatches_refund_flow() {
             assert_eq!(utterance.as_deref(), Some("refund please"));
         }
         other => panic!("expected dispatch, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn routing_dispatch_preserves_agentic_flow_type() {
+    let docs = vec![FlowDoc {
+        id: "network_triage".to_string(),
+        pack_id: "telco".to_string(),
+        target: "telco/network_triage".to_string(),
+        title: "Network Triage".to_string(),
+        tags: vec!["network".to_string(), "triage".to_string()],
+        node_ids: vec!["coordinator".to_string()],
+        flow_type: FlowExecutionType::Agentic,
+    }];
+    let store = build_test_index("tenant-a:default", docs);
+    let lookup = TestLookup { store };
+    let router = default_router(None, RouterConfig::default());
+
+    let output = router
+        .route(
+            request("tenant-a:default", "network triage", false, 200),
+            &lookup,
+        )
+        .await;
+
+    match output.directive {
+        RoutingDirective::Dispatch {
+            target, flow_type, ..
+        } => {
+            assert_eq!(target, "telco/network_triage");
+            assert_eq!(flow_type, FlowExecutionType::Agentic);
+        }
+        other => panic!("expected agentic dispatch, got {other:?}"),
     }
 }
 
@@ -284,6 +318,7 @@ impl LlmProvider for MockLlmProvider {
                 target: target.clone(),
                 confidence: *confidence,
                 reason: reason.clone(),
+                flow_type: FlowExecutionType::Deterministic,
             }),
             MockOutcome::Timeout => Err(LlmError::Timeout),
         }

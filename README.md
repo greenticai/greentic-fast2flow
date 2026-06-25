@@ -54,11 +54,34 @@ When a message comes in, Fast2Flow runs this pipeline:
    The index contains the flows that are valid for that tenant or routing scope.
 3. The deterministic strategy scores likely matches.
    This is the normal path and is intended to handle the majority of traffic.
-4. If the top match is confident enough, Fast2Flow returns `Dispatch`.
-5. If the deterministic result is not strong enough, Fast2Flow can optionally ask an LLM for help.
-6. If no safe answer is available, Fast2Flow returns `Continue`.
+4. If the top match is confident enough, Fast2Flow returns `Dispatch` with both `target` and `flow_type`.
+5. The caller uses `flow_type` to choose the execution path: `deterministic` goes to the normal workflow runner, `agentic` goes to the top-level agentic coordinator.
+6. If the deterministic result is not strong enough, Fast2Flow can optionally ask an LLM for help.
+7. If no safe answer is available, Fast2Flow returns `Continue`.
 
-The important design rule is that Fast2Flow prefers predictable routing first and only uses the LLM as a fallback.
+The important design rule is that Fast2Flow prefers predictable routing first and only uses the LLM as a fallback. The selected flow can still be either deterministic or agentic; Fast2Flow is the selection layer, not the agentic runtime itself.
+
+
+### Flow Execution Type
+
+Fast2Flow dispatches to a target and declares how that target should be executed:
+
+- `deterministic`: the existing fixed workflow/DAG/state-machine path. This is the default for legacy indexes and payloads.
+- `agentic`: a top-level agentic component should be called; that component may delegate to agentic workers as tools and return the final reply.
+
+Bundle metadata can set `execution_type: agentic` (or `flow_execution_type: agentic`) on a flow. If omitted, Fast2Flow indexes it as `deterministic`.
+
+Example dispatch:
+
+```json
+{
+  "type": "dispatch",
+  "target": "telco/network_triage",
+  "confidence": 0.86,
+  "reason": "phase1_deterministic_rank",
+  "flow_type": "agentic"
+}
+```
 
 ## Typical Request Lifecycle
 
@@ -87,7 +110,7 @@ If you are new to the project, start with the CLI because it makes the routing b
 ### Greentic-X Runner Component Operation
 
 For Greentic-X runner dispatch, use the packaged Greentic component `fast2flow.router` with operation `route-intent`.
-That operation accepts the Greentic-X `Fast2FlowRouteRequest` JSON shape, loads the mounted index from `indexes_path`, runs deterministic Fast2Flow routing, and returns the Greentic-X `Fast2FlowRouteResult` JSON shape.
+That operation accepts the Greentic-X `Fast2FlowRouteRequest` JSON shape, loads the mounted index from `indexes_path`, runs deterministic Fast2Flow routing, and returns the Greentic-X `Fast2FlowRouteResult` JSON shape. Dispatch results include `flow_type`, so the caller can choose the deterministic workflow runner or the agentic coordinator runner after Fast2Flow has selected the target.
 
 The legacy `route` operation remains available for flows that already call matcher first and pass a precomputed `match_result`.
 

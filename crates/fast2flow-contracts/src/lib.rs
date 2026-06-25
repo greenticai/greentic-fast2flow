@@ -231,6 +231,14 @@ pub struct Fast2FlowHookOutV1 {
 
 pub type HookOutV1 = Fast2FlowHookOutV1;
 
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum FlowExecutionType {
+    #[default]
+    Deterministic,
+    Agentic,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RoutingDirective {
@@ -246,6 +254,10 @@ pub enum RoutingDirective {
         /// `None` on legacy producers — consumers must tolerate absence.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         utterance: Option<String>,
+        /// Selects which downstream runner should execute the matched target.
+        /// Legacy producers/indices default to deterministic workflow dispatch.
+        #[serde(default)]
+        flow_type: FlowExecutionType,
     },
     Respond {
         message: String,
@@ -278,6 +290,8 @@ pub struct FlowDoc {
     pub title: String,
     pub tags: Vec<String>,
     pub node_ids: Vec<String>,
+    #[serde(default)]
+    pub flow_type: FlowExecutionType,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -288,6 +302,8 @@ pub struct IndexEntryV1 {
     pub tags: Vec<String>,
     pub pack_id: String,
     pub target: String,
+    #[serde(default)]
+    pub flow_type: FlowExecutionType,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -316,6 +332,8 @@ pub struct IndexEntryV2 {
     pub utterances: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub node_ids: Vec<String>,
+    #[serde(default)]
+    pub flow_type: FlowExecutionType,
 }
 
 impl IndexEntryV2 {
@@ -330,6 +348,7 @@ impl IndexEntryV2 {
             tags: entry.tags,
             utterances: Vec::new(),
             node_ids: entry.node_ids,
+            flow_type: entry.flow_type,
         }
     }
 }
@@ -376,6 +395,7 @@ mod index_v2_tests {
             tags: vec!["pipeline".into(), "deals".into()],
             pack_id: "demo".into(),
             target: "demo/pipeline".into(),
+            flow_type: FlowExecutionType::Deterministic,
         };
         let v2 = IndexEntryV2::from_v1(v1);
         assert_eq!(v2.title, "View pipeline");
@@ -408,6 +428,7 @@ mod index_v2_tests {
             tags: Vec::new(),
             utterances: Vec::new(),
             node_ids: Vec::new(),
+            flow_type: FlowExecutionType::Deterministic,
         };
         let json = serde_json::to_string(&entry).unwrap();
         assert!(!json.contains("\"title\""));
@@ -429,10 +450,23 @@ mod index_v2_tests {
             tags: vec!["pipeline".into()],
             utterances: vec!["show me the pipeline".into()],
             node_ids: vec!["pipeline_card".into()],
+            flow_type: FlowExecutionType::Agentic,
         };
         let json = serde_json::to_string(&original).unwrap();
         let decoded: IndexEntryV2 = serde_json::from_str(&json).unwrap();
         assert_eq!(decoded, original);
+    }
+
+    #[test]
+    fn legacy_v2_entry_without_flow_type_defaults_to_deterministic() {
+        let payload = r#"{
+            "flow_id": "refund",
+            "pack_id": "support",
+            "target": "support/refund",
+            "title": "Refund"
+        }"#;
+        let decoded: IndexEntryV2 = serde_json::from_str(payload).unwrap();
+        assert_eq!(decoded.flow_type, FlowExecutionType::Deterministic);
     }
 }
 
@@ -443,6 +477,8 @@ pub struct Candidate {
     pub title: String,
     pub tags: Vec<String>,
     pub score_hint: f32,
+    #[serde(default)]
+    pub flow_type: FlowExecutionType,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -450,6 +486,8 @@ pub struct Decision {
     pub target: String,
     pub confidence: f32,
     pub reason: String,
+    #[serde(default)]
+    pub flow_type: FlowExecutionType,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -656,6 +694,7 @@ mod tests {
             reason: "deterministic".to_string(),
             entities: Vec::new(),
             utterance: Some("NDA between Acme and us by Friday".to_string()),
+            flow_type: FlowExecutionType::Agentic,
         };
         let json = serde_json::to_string(&directive).expect("serialize");
         let parsed: RoutingDirective = serde_json::from_str(&json).expect("round-trip");
@@ -672,12 +711,14 @@ mod tests {
             reason: "deterministic".to_string(),
             entities: Vec::new(),
             utterance: None,
+            flow_type: FlowExecutionType::Deterministic,
         };
         let json = serde_json::to_string(&directive).expect("serialize");
         assert!(
             !json.contains("utterance"),
             "utterance key must be skipped when None: {json}"
         );
+        assert!(json.contains("flow_type"));
     }
 
     #[test]
@@ -693,10 +734,14 @@ mod tests {
         let directive: RoutingDirective = serde_json::from_str(payload).expect("legacy parse");
         match directive {
             RoutingDirective::Dispatch {
-                utterance, target, ..
+                utterance,
+                target,
+                flow_type,
+                ..
             } => {
                 assert!(utterance.is_none(), "default to None on legacy payload");
                 assert_eq!(target, "support/refund_flow");
+                assert_eq!(flow_type, FlowExecutionType::Deterministic);
             }
             other => panic!("expected dispatch, got {other:?}"),
         }

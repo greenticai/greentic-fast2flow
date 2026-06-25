@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
+use fast2flow_contracts::FlowExecutionType;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -9,6 +10,8 @@ pub struct LlmResponse {
     pub target: String,
     pub confidence: f32,
     pub reason: String,
+    #[serde(default)]
+    pub flow_type: FlowExecutionType,
 }
 
 #[derive(Debug, Error)]

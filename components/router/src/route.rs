@@ -5,7 +5,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 use fast2flow_contracts::{
-    Candidate, Fast2FlowHookInV1, MessageEnvelope, RoutingDirective as Fast2FlowRoutingDirective,
+    Candidate, Fast2FlowHookInV1, FlowExecutionType, MessageEnvelope,
+    RoutingDirective as Fast2FlowRoutingDirective,
 };
 use fast2flow_core::{CandidateIndex, CoreRouter, RouterConfig as CoreRouterConfig};
 use fast2flow_hooks::DefaultHookFilter;
@@ -39,6 +40,8 @@ pub struct FlowRef {
     pub flow_id: String,
     pub title: String,
     pub confidence: f64,
+    #[serde(default)]
+    pub flow_type: FlowExecutionType,
 }
 
 /// Match result from the matcher component.
@@ -91,6 +94,8 @@ pub struct DispatchTarget {
     pub flow: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub node: Option<String>,
+    #[serde(default)]
+    pub flow_type: FlowExecutionType,
 }
 
 /// Control directive output.
@@ -147,6 +152,8 @@ pub enum GreenticXFast2FlowDirective {
         target: String,
         confidence: f32,
         reason: String,
+        #[serde(default)]
+        flow_type: FlowExecutionType,
     },
     Respond {
         message: String,
@@ -344,12 +351,14 @@ fn map_hook_output(directive: Fast2FlowRoutingDirective) -> Fast2FlowRouteResult
             target,
             confidence,
             reason,
+            flow_type,
             ..
         } => Fast2FlowRouteResult {
             directive: GreenticXFast2FlowDirective::Dispatch {
                 target,
                 confidence,
                 reason,
+                flow_type,
             },
             metadata: BTreeMap::new(),
         },
@@ -412,6 +421,7 @@ fn create_dispatch_directive(
             pack: flow.pack_id.clone(),
             flow: Some(flow.flow_id.clone()),
             node: None,
+            flow_type: flow.flow_type,
         }),
         response_text: None,
         response_card: None,
@@ -471,6 +481,7 @@ mod tests {
             flow_id: "test-flow".to_string(),
             title: "Test Flow".to_string(),
             confidence: 0.9,
+            flow_type: FlowExecutionType::Agentic,
         };
 
         let directive = create_dispatch_directive("tenant1", Some("team1"), &flow);
@@ -481,6 +492,7 @@ mod tests {
         assert_eq!(target.tenant, "tenant1");
         assert_eq!(target.pack, "test-pack");
         assert_eq!(target.flow, Some("test-flow".to_string()));
+        assert_eq!(target.flow_type, FlowExecutionType::Agentic);
     }
 
     #[test]
@@ -490,6 +502,7 @@ mod tests {
             flow_id: "delete_all".to_string(),
             title: "Delete All Data".to_string(),
             confidence: 0.95,
+            flow_type: FlowExecutionType::Deterministic,
         };
 
         let blocked = vec!["admin:delete_all".to_string()];
@@ -513,6 +526,7 @@ mod tests {
             title: "Refund Request".to_string(),
             tags: vec!["refund".to_string(), "billing".to_string()],
             node_ids: vec!["start".to_string(), "issue_refund".to_string()],
+            flow_type: FlowExecutionType::Deterministic,
         }];
         build_index(scope, &flows, &indexes_root, 0).expect("index build should succeed");
         let input = canonical::to_canonical_cbor_allow_floats(&serde_json::json!({
@@ -534,8 +548,54 @@ mod tests {
         let output: Fast2FlowRouteResult = canonical::from_cbor(&route_intent(input)).unwrap();
 
         match output.directive {
-            GreenticXFast2FlowDirective::Dispatch { target, .. } => {
+            GreenticXFast2FlowDirective::Dispatch {
+                target, flow_type, ..
+            } => {
                 assert_eq!(target, "support/refund_flow");
+                assert_eq!(flow_type, FlowExecutionType::Deterministic);
+            }
+            other => panic!("expected dispatch, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn route_intent_dispatches_agentic_flow_type_from_mounted_index() {
+        let scope = "tenant-e2e:default";
+        let indexes_root = temp_indexes_dir();
+        let flows = vec![FlowDoc {
+            id: "network_triage".to_string(),
+            pack_id: "telco".to_string(),
+            target: "telco/network_triage".to_string(),
+            title: "Network Triage".to_string(),
+            tags: vec!["network".to_string(), "triage".to_string()],
+            node_ids: vec!["coordinator".to_string()],
+            flow_type: FlowExecutionType::Agentic,
+        }];
+        build_index(scope, &flows, &indexes_root, 0).expect("index build should succeed");
+        let input = canonical::to_canonical_cbor_allow_floats(&serde_json::json!({
+            "scope": scope,
+            "envelope": {
+                "text": "network triage",
+                "channel": "chat",
+                "provider": "tests"
+            },
+            "session_active": false,
+            "input_locale": "en-US",
+            "time_budget_ms": 250,
+            "registry_path": "",
+            "indexes_path": indexes_root.display().to_string(),
+            "now_unix_ms": 0
+        }))
+        .unwrap();
+
+        let output: Fast2FlowRouteResult = canonical::from_cbor(&route_intent(input)).unwrap();
+
+        match output.directive {
+            GreenticXFast2FlowDirective::Dispatch {
+                target, flow_type, ..
+            } => {
+                assert_eq!(target, "telco/network_triage");
+                assert_eq!(flow_type, FlowExecutionType::Agentic);
             }
             other => panic!("expected dispatch, got {other:?}"),
         }

@@ -11,7 +11,7 @@
 //! markers and corpus markers is what makes the routing language-neutral.
 
 use chrono::{TimeZone, Utc};
-use fast2flow_contracts::{IndexEntryV2, IndexManifestV2};
+use fast2flow_contracts::{FlowExecutionType, IndexEntryV2, IndexManifestV2};
 use fast2flow_indexer::IndexStore;
 use greentic_intent::{IntentContext, IntentEngine};
 
@@ -52,6 +52,7 @@ fn build_test_index() -> IndexStore {
                 "wat is het weer in {{location}} {{date}}".into(),
             ],
             node_ids: vec!["forecast_card".into()],
+            flow_type: FlowExecutionType::Deterministic,
         },
         IndexEntryV2 {
             flow_id: "book_flight".into(),
@@ -75,6 +76,7 @@ fn build_test_index() -> IndexStore {
                 "boek een vlucht van {{location}} naar {{location}}".into(),
             ],
             node_ids: vec!["booking_card".into()],
+            flow_type: FlowExecutionType::Deterministic,
         },
         IndexEntryV2 {
             flow_id: "schedule_meeting".into(),
@@ -88,6 +90,7 @@ fn build_test_index() -> IndexStore {
                 "set up call for {{date}}".into(),
             ],
             node_ids: vec!["calendar_card".into()],
+            flow_type: FlowExecutionType::Deterministic,
         },
     ];
 

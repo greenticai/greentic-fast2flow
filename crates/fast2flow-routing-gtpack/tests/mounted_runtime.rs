@@ -2,7 +2,8 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use fast2flow_contracts::{
-    Fast2FlowHookInV1, FlowDoc, MessageEnvelope, MessagingEndpointId, RoutingDirective,
+    Fast2FlowHookInV1, FlowDoc, FlowExecutionType, MessageEnvelope, MessagingEndpointId,
+    RoutingDirective,
 };
 use fast2flow_core::{CoreRouter, RouterConfig};
 use fast2flow_hooks::DefaultHookFilter;
@@ -21,6 +22,7 @@ async fn handle_hook_from_mounts_dispatches_for_refund() {
         title: "Refund Request".to_string(),
         tags: vec!["refund".to_string(), "billing".to_string()],
         node_ids: vec!["start".to_string(), "issue_refund".to_string()],
+        flow_type: FlowExecutionType::Deterministic,
     }];
     build_index(scope, &flows, &indexes_root, 0).expect("index build should succeed");
 
@@ -115,6 +117,7 @@ async fn handle_hook_from_mounts_resolves_endpoint_scope_when_set() {
         title: "NDA Form".to_string(),
         tags: vec!["nda".to_string(), "contract".to_string()],
         node_ids: vec!["start".to_string()],
+        flow_type: FlowExecutionType::Deterministic,
     }];
     let endpoint_scope_key = fast2flow_contracts::endpoint_scope(&endpoint_id);
     build_index(&endpoint_scope_key, &flows, &indexes_root, 0).expect("endpoint index build");
@@ -172,6 +175,7 @@ async fn handle_hook_from_mounts_legacy_scope_path_unchanged() {
         title: "Refund Request".to_string(),
         tags: vec!["refund".to_string(), "billing".to_string()],
         node_ids: vec!["start".to_string()],
+        flow_type: FlowExecutionType::Deterministic,
     }];
     build_index(scope, &flows, &indexes_root, 0).expect("legacy index build");
 

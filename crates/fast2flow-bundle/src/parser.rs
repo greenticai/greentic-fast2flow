@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
+use fast2flow_contracts::FlowExecutionType;
 use serde::{Deserialize, Serialize};
 
 /// Flow metadata extracted from .ygtc files.
@@ -22,6 +23,10 @@ pub struct FlowMeta {
     /// Flow type (e.g., "messaging", "events").
     #[serde(default, rename = "type")]
     pub flow_type: Option<String>,
+
+    /// Downstream execution path selected by Fast2Flow.
+    #[serde(default, alias = "flow_execution_type")]
+    pub execution_type: FlowExecutionType,
 
     /// Tags for categorization.
     #[serde(default)]
@@ -55,6 +60,9 @@ pub struct FlowEntry {
 
     /// Flow type.
     pub flow_type: String,
+
+    /// Execution path selected after Fast2Flow dispatch.
+    pub execution_type: FlowExecutionType,
 
     /// Original file path.
     pub file_path: String,
@@ -92,6 +100,7 @@ pub fn parse_flow_file(path: &Path, pack_id: &str) -> Result<FlowEntry> {
         tags: meta.tags,
         keywords,
         flow_type,
+        execution_type: meta.execution_type,
         file_path: path.to_string_lossy().to_string(),
     })
 }

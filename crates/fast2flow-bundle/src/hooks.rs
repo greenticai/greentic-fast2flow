@@ -197,6 +197,7 @@ fn index_bundle_for_endpoint_internal(
             // FlowEntry does not retain node ids; downstream scoring
             // does not need them.
             node_ids: Vec::new(),
+            flow_type: entry.execution_type,
         })
         .collect();
 

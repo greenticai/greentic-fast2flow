@@ -136,6 +136,7 @@ impl CoreRouter {
                         reason: decision.reason,
                         entities: Vec::new(),
                         utterance: Some(request.envelope.text.clone()),
+                        flow_type: decision.flow_type,
                     },
                 };
             }
@@ -187,6 +188,7 @@ impl CoreRouter {
                                 reason: answer.reason,
                                 entities: Vec::new(),
                                 utterance: Some(request.envelope.text.clone()),
+                                flow_type: answer.flow_type,
                             },
                         };
                     }
@@ -217,12 +219,17 @@ fn llm_prompt(scope: &str, text: &str, candidates: &[Candidate]) -> String {
     let shortlist = candidates
         .iter()
         .take(5)
-        .map(|candidate| format!("{}:{}", candidate.target, candidate.title))
+        .map(|candidate| {
+            format!(
+                "{}:{}:{:?}",
+                candidate.target, candidate.title, candidate.flow_type
+            )
+        })
         .collect::<Vec<String>>()
         .join("; ");
 
     format!(
-        "scope={scope}; input={text}; candidates={shortlist}; return json {{target, confidence, reason}}"
+        "scope={scope}; input={text}; candidates={shortlist}; return json {{target, confidence, reason, flow_type}} where flow_type is deterministic or agentic"
     )
 }
 

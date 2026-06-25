@@ -2,8 +2,8 @@ use std::sync::Arc;
 use std::sync::OnceLock;
 
 use fast2flow_contracts::{
-    validate_scope, Fast2FlowHookInV1, Fast2FlowHookOutV1, MessageEnvelope, MessagingEndpointId,
-    RoutingDirective,
+    validate_scope, Fast2FlowHookInV1, Fast2FlowHookOutV1, FlowExecutionType, MessageEnvelope,
+    MessagingEndpointId, RoutingDirective,
 };
 use fast2flow_core::CoreRouter;
 use futures::executor::block_on;
@@ -11,7 +11,8 @@ use futures::executor::block_on;
 use super::generated_bindings::exports::greentic::fast2flow::routing_hook::Guest;
 use super::generated_bindings::greentic::fast2flow::routing_types::{
     DispatchPayload as WitDispatchPayload, Fast2flowHookInV1 as WitIn,
-    Fast2flowHookOutV1 as WitOut, MessageEnvelope as WitEnvelope, RoutingDirective as WitDirective,
+    Fast2flowHookOutV1 as WitOut, FlowExecutionType as WitFlowExecutionType,
+    MessageEnvelope as WitEnvelope, RoutingDirective as WitDirective,
 };
 use super::handle_hook_from_mounts;
 
@@ -124,16 +125,25 @@ fn map_out(output: Fast2FlowHookOutV1) -> WitOut {
             // The native binary path carries entities through unchanged.
             entities: _,
             utterance,
+            flow_type,
         } => WitDirective::Dispatch(WitDispatchPayload {
             target,
             confidence,
             reason,
             utterance,
+            flow_type: map_flow_type(flow_type),
         }),
         RoutingDirective::Respond { message } => WitDirective::Respond(message),
         RoutingDirective::Deny { reason } => WitDirective::Deny(reason),
     };
     WitOut { directive }
+}
+
+fn map_flow_type(flow_type: FlowExecutionType) -> WitFlowExecutionType {
+    match flow_type {
+        FlowExecutionType::Deterministic => WitFlowExecutionType::Deterministic,
+        FlowExecutionType::Agentic => WitFlowExecutionType::Agentic,
+    }
 }
 
 #[allow(dead_code)]
