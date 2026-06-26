@@ -1,12 +1,12 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use fast2flow_contracts::{
-    ChannelPolicyOverrideV1, Fast2FlowHookInV1, FlowDoc, FlowExecutionType, MessageEnvelope,
-    MessagingEndpointId, PolicyRuleV1, PolicyStageV1, ProviderPolicyOverrideV1, RespondRuleV1,
-    RoutingDirective, RoutingPolicyV1, ScopePolicyOverrideV1, TextMatchModeV1, endpoint_scope,
+    endpoint_scope, ChannelPolicyOverrideV1, Fast2FlowHookInV1, FlowDoc, FlowExecutionType,
+    MessageEnvelope, MessagingEndpointId, PolicyRuleV1, PolicyStageV1, ProviderPolicyOverrideV1,
+    RespondRuleV1, RoutingDirective, RoutingPolicyV1, ScopePolicyOverrideV1, TextMatchModeV1,
 };
 use fast2flow_indexer::build_index;
-use fast2flow_routing_gtpack::{HostRuntime, RouterBootstrapConfig, load_policy_from_path};
+use fast2flow_routing_gtpack::{load_policy_from_path, HostRuntime, RouterBootstrapConfig};
 
 #[tokio::test]
 async fn scope_override_can_tighten_confidence_threshold() {
@@ -187,12 +187,10 @@ async fn route_with_trace_reports_policy_overwrites() {
     let policy_trace = trace
         .policy
         .expect("trace should include policy resolution");
-    assert!(
-        policy_trace
-            .warnings
-            .iter()
-            .any(|warning| warning.contains("overwritten"))
-    );
+    assert!(policy_trace
+        .warnings
+        .iter()
+        .any(|warning| warning.contains("overwritten")));
     assert_eq!(policy_trace.effective.min_confidence, 0.6);
 }
 
