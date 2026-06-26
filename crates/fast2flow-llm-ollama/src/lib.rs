@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
+use fast2flow_contracts::FlowExecutionType;
 use fast2flow_llm::{LlmError, LlmProvider, LlmResponse};
 use greentic_secrets_lib::{EnvSecretsManager, SecretsManager};
 use reqwest::Client;
@@ -60,6 +61,8 @@ struct LlmOutputSchema {
     target: String,
     confidence: f32,
     reason: String,
+    #[serde(default)]
+    flow_type: FlowExecutionType,
 }
 
 #[async_trait]
@@ -126,6 +129,7 @@ impl LlmProvider for OllamaProvider {
             target: output.target,
             confidence: output.confidence,
             reason: output.reason,
+            flow_type: output.flow_type,
         })
     }
 }

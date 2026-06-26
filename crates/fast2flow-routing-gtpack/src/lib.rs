@@ -1,13 +1,15 @@
 use std::path::Path;
 
-use fast2flow_contracts::{
-    Candidate, Fast2FlowHookInV1, Fast2FlowHookOutV1, PolicyResolutionV1, RoutingDirective,
-};
+#[cfg(not(target_arch = "wasm32"))]
+use fast2flow_contracts::PolicyResolutionV1;
+use fast2flow_contracts::{Candidate, Fast2FlowHookInV1, Fast2FlowHookOutV1, RoutingDirective};
 use fast2flow_core::{CandidateIndex, CoreRouter};
 use fast2flow_indexer::{load_latest, IndexStore};
 
 mod config;
+#[cfg(not(target_arch = "wasm32"))]
 mod host;
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 mod policy;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -16,6 +18,7 @@ pub mod telemetry;
 pub use config::{
     build_router_from_config, build_router_from_env, LlmRuntimeConfig, RouterBootstrapConfig,
 };
+#[cfg(not(target_arch = "wasm32"))]
 pub use host::HostRuntime;
 pub use policy::{load_policy_from_env, load_policy_from_path};
 

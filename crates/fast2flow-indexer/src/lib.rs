@@ -162,6 +162,7 @@ pub fn build_manifest_v2(scope: &str, flows: &[FlowDoc], now_unix_ms: u64) -> In
             tags: flow.tags.clone(),
             utterances: Vec::new(),
             node_ids: flow.node_ids.clone(),
+            flow_type: flow.flow_type,
         })
         .collect();
 
@@ -187,6 +188,7 @@ pub fn build_manifest(scope: &str, flows: &[FlowDoc], now_unix_ms: u64) -> Index
             tags: flow.tags.clone(),
             pack_id: flow.pack_id.clone(),
             target: flow.target.clone(),
+            flow_type: flow.flow_type,
         })
         .collect();
 
@@ -299,6 +301,7 @@ fn search_manifest(manifest: &IndexManifestV2, text: &str, limit: usize) -> Vec<
                     title: entry.title.clone(),
                     tags: entry.tags.clone(),
                     score_hint: score,
+                    flow_type: entry.flow_type,
                 },
             )
         })
@@ -374,6 +377,7 @@ mod tests {
                 title: "View pipeline".into(),
                 tags: vec!["pipeline".into()],
                 node_ids: vec![],
+                flow_type: fast2flow_contracts::FlowExecutionType::Deterministic,
             }],
             42,
         );
@@ -427,6 +431,7 @@ mod tests {
                 tags: vec!["meeting".into()],
                 utterances: vec!["book me a slot with sales".into()],
                 node_ids: vec![],
+                flow_type: fast2flow_contracts::FlowExecutionType::Deterministic,
             }],
         };
         let store = IndexStore::from_manifest(manifest);

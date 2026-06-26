@@ -120,6 +120,7 @@ fn route_intent_directive_schema() -> SchemaIr {
             false,
         ),
         ("reason", string_schema(1, 4096), false),
+        ("flow_type", flow_type_schema(), false),
         ("message", string_schema(1, 4096), false),
     ])
 }
@@ -187,6 +188,7 @@ fn flow_ref_schema() -> SchemaIr {
             },
             true,
         ),
+        ("flow_type", flow_type_schema(), false),
     ])
 }
 
@@ -238,7 +240,17 @@ fn dispatch_target_schema() -> SchemaIr {
         ("pack", string_schema(1, 256), true),
         ("flow", string_schema(1, 128), false),
         ("node", string_schema(1, 128), false),
+        ("flow_type", flow_type_schema(), false),
     ])
+}
+
+fn flow_type_schema() -> SchemaIr {
+    SchemaIr::String {
+        min_len: Some(1),
+        max_len: Some(32),
+        regex: Some(String::from("^(deterministic|agentic)$")),
+        format: None,
+    }
 }
 
 /// Creates an "any" schema using OneOf with common types.

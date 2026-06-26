@@ -190,6 +190,7 @@ pub fn generate_intents_md(entries: &[FlowEntry], tenant: &str, team: &str) -> S
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fast2flow_contracts::FlowExecutionType;
 
     fn sample_entries() -> Vec<FlowEntry> {
         vec![
@@ -205,6 +206,7 @@ mod tests {
                     "schedule".to_string(),
                 ],
                 flow_type: "messaging".to_string(),
+                execution_type: FlowExecutionType::Deterministic,
                 file_path: "/path/to/flow.ygtc".to_string(),
             },
             FlowEntry {
@@ -215,6 +217,7 @@ mod tests {
                 tags: vec!["weather".to_string()],
                 keywords: vec!["weather".to_string(), "forecast".to_string()],
                 flow_type: "messaging".to_string(),
+                execution_type: FlowExecutionType::Deterministic,
                 file_path: "/path/to/weather.ygtc".to_string(),
             },
         ]

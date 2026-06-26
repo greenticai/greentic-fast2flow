@@ -21,6 +21,12 @@ interface routing-types {
     messaging-endpoint-id: option<string>,
   }
 
+  enum flow-execution-type {
+    deterministic,
+    agentic,
+  }
+
+
   // Named record over positional tuple so future additions are
   // field-additive instead of position-shifting.
   record dispatch-payload {
@@ -28,6 +34,7 @@ interface routing-types {
     confidence: f32,
     reason: string,
     utterance: option<string>,
+    flow-type: flow-execution-type,
   }
 
   variant routing-directive {

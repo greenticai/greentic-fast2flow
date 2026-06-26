@@ -1,9 +1,9 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use fast2flow_contracts::{
-    endpoint_scope, ChannelPolicyOverrideV1, Fast2FlowHookInV1, FlowDoc, MessageEnvelope,
-    MessagingEndpointId, PolicyRuleV1, PolicyStageV1, ProviderPolicyOverrideV1, RespondRuleV1,
-    RoutingDirective, RoutingPolicyV1, ScopePolicyOverrideV1, TextMatchModeV1,
+    endpoint_scope, ChannelPolicyOverrideV1, Fast2FlowHookInV1, FlowDoc, FlowExecutionType,
+    MessageEnvelope, MessagingEndpointId, PolicyRuleV1, PolicyStageV1, ProviderPolicyOverrideV1,
+    RespondRuleV1, RoutingDirective, RoutingPolicyV1, ScopePolicyOverrideV1, TextMatchModeV1,
 };
 use fast2flow_indexer::build_index;
 use fast2flow_routing_gtpack::{load_policy_from_path, HostRuntime, RouterBootstrapConfig};
@@ -347,6 +347,7 @@ fn seed_refund_index(scope: &str, indexes_root: &std::path::Path) {
         title: "Refund Request".to_string(),
         tags: vec!["refund".to_string(), "billing".to_string()],
         node_ids: vec!["start".to_string(), "issue_refund".to_string()],
+        flow_type: FlowExecutionType::Deterministic,
     }];
     build_index(scope, &flows, indexes_root, 0).expect("index build should succeed");
 }
