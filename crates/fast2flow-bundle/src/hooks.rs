@@ -8,11 +8,11 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use fast2flow_contracts::{
-    endpoint_scope, FlowDoc, IndexManifest as RuntimeIndexManifest, MessagingEndpointId,
+    FlowDoc, IndexManifest as RuntimeIndexManifest, MessagingEndpointId, endpoint_scope,
 };
 use tracing::{info, warn};
 
-use crate::index::{build_index_manifest, generate_intents_md, IndexManifest};
+use crate::index::{IndexManifest, build_index_manifest, generate_intents_md};
 use crate::parser::FlowEntry;
 use crate::scanner::scan_bundle_verbose;
 

@@ -26,6 +26,7 @@ interface routing-types {
     agentic,
   }
 
+
   // Named record over positional tuple so future additions are
   // field-additive instead of position-shifting.
   record dispatch-payload {

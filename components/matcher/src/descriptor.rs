@@ -34,6 +34,7 @@ pub fn describe() -> ComponentDescribe {
             required: Vec::new(),
             additional: AdditionalProperties::Allow,
         },
+        outcomes: Vec::new(),
     }
 }
 
