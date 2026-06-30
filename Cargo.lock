@@ -554,7 +554,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-bundle"
-version = "1.3.0-dev.0"
+version = "1.3.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -570,7 +570,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-component-indexer"
-version = "1.3.0-dev.0"
+version = "1.3.0"
 dependencies = [
  "greentic-interfaces-guest",
  "greentic-types",
@@ -580,7 +580,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-component-matcher"
-version = "1.3.0-dev.0"
+version = "1.3.0"
 dependencies = [
  "greentic-interfaces-guest",
  "greentic-types",
@@ -590,7 +590,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-component-router"
-version = "1.3.0-dev.0"
+version = "1.3.0"
 dependencies = [
  "fast2flow-contracts",
  "fast2flow-core",
@@ -606,7 +606,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-contracts"
-version = "1.3.0-dev.0"
+version = "1.3.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -615,7 +615,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-core"
-version = "1.3.0-dev.0"
+version = "1.3.0"
 dependencies = [
  "async-trait",
  "fast2flow-contracts",
@@ -631,7 +631,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-hooks"
-version = "1.3.0-dev.0"
+version = "1.3.0"
 dependencies = [
  "fast2flow-contracts",
  "regex",
@@ -640,7 +640,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-indexer"
-version = "1.3.0-dev.0"
+version = "1.3.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -653,7 +653,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-llm"
-version = "1.3.0-dev.0"
+version = "1.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -664,7 +664,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-llm-ollama"
-version = "1.3.0-dev.0"
+version = "1.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -680,7 +680,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-llm-openai"
-version = "1.3.0-dev.0"
+version = "1.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -696,7 +696,7 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-routing-gtpack"
-version = "1.3.0-dev.0"
+version = "1.3.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -723,14 +723,14 @@ dependencies = [
 
 [[package]]
 name = "fast2flow-strategy"
-version = "1.3.0-dev.0"
+version = "1.3.0"
 dependencies = [
  "fast2flow-contracts",
 ]
 
 [[package]]
 name = "fast2flow-strategy-phase1"
-version = "1.3.0-dev.0"
+version = "1.3.0"
 dependencies = [
  "fast2flow-contracts",
  "fast2flow-strategy",
@@ -921,7 +921,7 @@ dependencies = [
 
 [[package]]
 name = "greentic-fast2flow"
-version = "1.3.0-dev.0"
+version = "1.3.0"
 dependencies = [
  "anyhow",
  "clap",
