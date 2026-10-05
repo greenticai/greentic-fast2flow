@@ -203,6 +203,22 @@ jobs:
             os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             archive: tar.gz
+          # Static musl builds of the routing host ONLY (host_only): the binary
+          # greentic-start spawns, runnable on any Linux and in greentic-start's
+          # distroless (musl) image, unlike the gnu build (glibc >= 2.38).
+          # aws-lc-sys needs a musl C compiler; Debian's musl-tools ships a
+          # musl-gcc for the HOST arch only, so aarch64 builds on a native arm
+          # runner (same approach as greentic-start's Dockerfile.distroless).
+          - id: linux-x86_64-musl
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            archive: tar.gz
+            host_only: true
+          - id: linux-aarch64-musl
+            os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+            archive: tar.gz
+            host_only: true
           - id: macos15-x86_64
             os: macos-15-intel
             target: x86_64-apple-darwin
@@ -235,16 +251,29 @@ jobs:
           sudo apt-get install -y gcc-aarch64-linux-gnu
           rustup target add aarch64-unknown-linux-gnu
 
+      - name: Install musl toolchain
+        if: endsWith(matrix.target, '-linux-musl')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools cmake
+          rustup target add "${{ matrix.target }}"
+
       - name: Build binaries
         shell: bash
         env:
           CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CC_x86_64_unknown_linux_musl: musl-gcc
+          CXX_x86_64_unknown_linux_musl: g++
+          CC_aarch64_unknown_linux_musl: musl-gcc
+          CXX_aarch64_unknown_linux_musl: g++
         run: |
           set -euo pipefail
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
           fi
-          cargo build --release --locked --target "${{ matrix.target }}" -p greentic-fast2flow --bin greentic-fast2flow
+          if [ "${{ matrix.host_only }}" != "true" ]; then
+            cargo build --release --locked --target "${{ matrix.target }}" -p greentic-fast2flow --bin greentic-fast2flow
+          fi
           cargo build --release --locked --target "${{ matrix.target }}" -p fast2flow-routing-gtpack --bin greentic-fast2flow-routing-host
 
       - name: Package Unix artifacts
@@ -257,18 +286,21 @@ jobs:
           out_dir="release"
           mkdir -p "$out_dir"
 
-          stage_cli="${{ matrix.id }}-greentic-fast2flow"
           stage_host="${{ matrix.id }}-greentic-fast2flow-routing-host"
-          mkdir -p "$stage_cli" "$stage_host"
-          cp "target/${target}/release/greentic-fast2flow" "$stage_cli/"
+          mkdir -p "$stage_host"
           cp "target/${target}/release/greentic-fast2flow-routing-host" "$stage_host/"
-
-          archive_cli="$out_dir/greentic-fast2flow-v${version}-${target}.tar.gz"
           archive_host="$out_dir/greentic-fast2flow-routing-host-v${version}-${target}.tar.gz"
-          tar -C "$stage_cli" -czf "$archive_cli" .
           tar -C "$stage_host" -czf "$archive_host" .
-          sha256sum "$archive_cli" > "$archive_cli.sha256"
           sha256sum "$archive_host" > "$archive_host.sha256"
+
+          if [ "${{ matrix.host_only }}" != "true" ]; then
+            stage_cli="${{ matrix.id }}-greentic-fast2flow"
+            mkdir -p "$stage_cli"
+            cp "target/${target}/release/greentic-fast2flow" "$stage_cli/"
+            archive_cli="$out_dir/greentic-fast2flow-v${version}-${target}.tar.gz"
+            tar -C "$stage_cli" -czf "$archive_cli" .
+            sha256sum "$archive_cli" > "$archive_cli.sha256"
+          fi
 
       - name: Package Windows artifacts
         if: matrix.archive == 'zip'
