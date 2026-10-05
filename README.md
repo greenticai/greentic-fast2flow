@@ -425,6 +425,8 @@ Release workflow is artifact-only (no crates.io publishing) and runs on `master`
   - `greentic-fast2flow-v<version>-<target>.(tar.gz|zip)`
   - `greentic-fast2flow-routing-host-v<version>-<target>.(tar.gz|zip)`
   - targets: Linux (`x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`), macOS 15 (`x86_64-apple-darwin`, `aarch64-apple-darwin`), Windows (`x86_64-pc-windows-msvc`, `aarch64-pc-windows-msvc`)
+  - the routing host is ALSO built as a static musl binary (`x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`, routing host only). It runs on any Linux, including greentic-start's distroless image; the gnu build needs glibc >= 2.38.
+- `ci/generate_release_manifests.py` writes the `gtc install` tool descriptors into the release: `greentic-fast2flow.json` (CLI) and `greentic-fast2flow-routing-host.json` (routing host; its Linux entries are the musl builds), plus `-docs.json` and `-store.json`. A tenant gets the routing host only once `customers-tools` lists that descriptor for it. `gtc install` writes it to `$CARGO_HOME/bin` (default `~/.cargo/bin`), where greentic-start finds it on `PATH` (or via `GREENTIC_FAST2FLOW_HOST_BIN`).
 - `cargo-binstall` can install from release assets with explicit URL format, for example:
   - `cargo binstall greentic-fast2flow --version <version> --pkg-url "https://github.com/<owner>/greentic-fast2flow/releases/download/v<version>/greentic-fast2flow-v<version>-<target>.<archive-format>"`
   - `cargo binstall greentic-fast2flow-routing-host --version <version> --pkg-url "https://github.com/<owner>/greentic-fast2flow/releases/download/v<version>/greentic-fast2flow-routing-host-v<version>-<target>.<archive-format>"`
