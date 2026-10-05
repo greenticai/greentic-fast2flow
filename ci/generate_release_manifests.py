@@ -26,13 +26,35 @@ TARGETS = [
     ("windows", "aarch64", "aarch64-pc-windows-msvc", "zip"),
 ]
 
+# The routing host is spawned by greentic-start (bare name on PATH, or
+# GREENTIC_FAST2FLOW_HOST_BIN). Its Linux entries point at the static musl
+# builds, not the gnu ones: the gnu build needs glibc >= 2.38, which neither
+# older hosts nor greentic-start's distroless image provide, while a static
+# musl binary runs on any Linux. `greentic-dev install` picks the FIRST target
+# matching os+arch and has no libc field, so listing gnu as well would only be
+# dead weight (or, placed first, the wrong pick).
+ROUTING_HOST_ID = "greentic-fast2flow-routing-host"
+ROUTING_HOST_NAME = "Greentic Fast2Flow routing host"
+ROUTING_HOST_DESCRIPTION = (
+    "Commercial Fast2Flow routing host that greentic-start spawns per turn; "
+    "distributed from private GitHub releases."
+)
+ROUTING_HOST_TARGETS = [
+    ("linux", "x86_64", "x86_64-unknown-linux-musl", "tar.gz"),
+    ("linux", "aarch64", "aarch64-unknown-linux-musl", "tar.gz"),
+    ("macos", "x86_64", "x86_64-apple-darwin", "tar.gz"),
+    ("macos", "aarch64", "aarch64-apple-darwin", "tar.gz"),
+    ("windows", "x86_64", "x86_64-pc-windows-msvc", "zip"),
+    ("windows", "aarch64", "aarch64-pc-windows-msvc", "zip"),
+]
 
-def parse_args() -> argparse.Namespace:
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate release manifests for Greentic Fast2Flow.")
     parser.add_argument("--artifacts-dir", required=True, type=Path)
     parser.add_argument("--version", required=True)
     parser.add_argument("--repository", required=True)
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def read_sha256(sha_path: Path) -> str:
@@ -43,10 +65,19 @@ def read_sha256(sha_path: Path) -> str:
     return checksum
 
 
-def build_tool_manifest(artifacts_dir: Path, version: str, repository: str) -> dict:
+def build_release_binary_manifest(
+    artifacts_dir: Path,
+    version: str,
+    repository: str,
+    *,
+    tool_id: str,
+    name: str,
+    description: str,
+    target_specs: list[tuple[str, str, str, str]],
+) -> dict:
     targets = []
-    for os_name, arch, target_triple, archive_ext in TARGETS:
-        archive_name = f"{TOOL_ID}-v{version}-{target_triple}.{archive_ext}"
+    for os_name, arch, target_triple, archive_ext in target_specs:
+        archive_name = f"{tool_id}-v{version}-{target_triple}.{archive_ext}"
         sha_name = f"{archive_name}.sha256"
         sha_path = artifacts_dir / sha_name
         if not sha_path.exists():
@@ -63,16 +94,40 @@ def build_tool_manifest(artifacts_dir: Path, version: str, repository: str) -> d
     return {
         "$schema": TOOL_SCHEMA_URL,
         "schema_version": "1",
-        "id": TOOL_ID,
-        "name": TOOL_NAME,
-        "description": TOOL_DESCRIPTION,
+        "id": tool_id,
+        "name": name,
+        "description": description,
         "install": {
             "type": "release-binary",
-            "binary_name": TOOL_ID,
+            "binary_name": tool_id,
             "targets": targets,
         },
         "docs": [DOC_ID],
     }
+
+
+def build_tool_manifest(artifacts_dir: Path, version: str, repository: str) -> dict:
+    return build_release_binary_manifest(
+        artifacts_dir,
+        version,
+        repository,
+        tool_id=TOOL_ID,
+        name=TOOL_NAME,
+        description=TOOL_DESCRIPTION,
+        target_specs=TARGETS,
+    )
+
+
+def build_routing_host_manifest(artifacts_dir: Path, version: str, repository: str) -> dict:
+    return build_release_binary_manifest(
+        artifacts_dir,
+        version,
+        repository,
+        tool_id=ROUTING_HOST_ID,
+        name=ROUTING_HOST_NAME,
+        description=ROUTING_HOST_DESCRIPTION,
+        target_specs=ROUTING_HOST_TARGETS,
+    )
 
 
 def build_docs_manifest(repository: str) -> dict:
@@ -104,8 +159,8 @@ def write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
-def main() -> int:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
     artifacts_dir = args.artifacts_dir
     if not artifacts_dir.is_dir():
         raise NotADirectoryError(f"artifacts directory not found: {artifacts_dir}")
@@ -113,6 +168,10 @@ def main() -> int:
     write_json(
         artifacts_dir / f"{TOOL_ID}.json",
         build_tool_manifest(artifacts_dir, args.version, args.repository),
+    )
+    write_json(
+        artifacts_dir / f"{ROUTING_HOST_ID}.json",
+        build_routing_host_manifest(artifacts_dir, args.version, args.repository),
     )
     write_json(
         artifacts_dir / f"{TOOL_ID}-docs.json",
