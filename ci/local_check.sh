@@ -29,6 +29,9 @@ step() {
   printf '\n==> %s\n' "$1"
 }
 
+step "release manifest generator tests"
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s ci -p 'test_generate_release_manifests.py'
+
 step "cargo fmt --all -- --check"
 cargo fmt --all -- --check
 
