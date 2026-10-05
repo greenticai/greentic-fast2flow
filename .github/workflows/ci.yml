@@ -263,9 +263,7 @@ jobs:
         env:
           CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
           CC_x86_64_unknown_linux_musl: musl-gcc
-          CXX_x86_64_unknown_linux_musl: g++
           CC_aarch64_unknown_linux_musl: musl-gcc
-          CXX_aarch64_unknown_linux_musl: g++
         run: |
           set -euo pipefail
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
