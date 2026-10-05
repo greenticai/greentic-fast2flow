@@ -94,6 +94,8 @@ jobs:
           components: rustfmt, clippy
           targets: wasm32-wasip2
       - uses: Swatinem/rust-cache@v2
+      - name: Release manifest generator tests
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s ci -p 'test_generate_release_manifests.py'
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Clippy host crates
